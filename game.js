@@ -351,7 +351,9 @@
   function P(x, y, w, h, kind, extra = {}) { return { x, y, w, h, kind, alive: true, hit: 0, ...extra }; }
   function B(x, y, w = 80) { return P(x, y, w, 18, 'bounce'); }
   function M(x, y, w, h, minX, maxX, speed) { return P(x, y, w, h, 'moving', { minX, maxX, speed, dir: 1 }); }
+  function V(x, y, w, h, minY, maxY, speed, kind = 'float') { return P(x, y, w, h, kind, { minY, maxY, speed, dir: 1 }); }
   function G(x, y, w, h = 110) { return P(x, y, w, h, 'sugarGate'); }
+  function TG(x, y, w, h = 110, phase = 0, openFor = 80, closedFor = 90) { return P(x, y, w, h, 'blinkGate', { phase, openFor, closedFor, open: false }); }
   function E(x, y, kind, range, speed = null) {
     const baseSpeed = speed ?? (kind === 'jaw' ? 1.55 : kind === 'beetle' ? 1.2 : kind === 'marsh' ? 1.0 : 0.95);
     return {
@@ -371,7 +373,7 @@
       theme: 'meadow',
       chapter: 'Chapter 1 of 6',
       story: 'The child lands in a bright lollipop field where the path is wide, cheerful, and easy to read.',
-      tip: 'Easy start: wide platforms, bounce pads, and clear candy trails teach the basics.',
+      tip: 'Easy start: wide platforms, bounce pads, and gentle lollipop lifts teach the basics.',
       success: 'You crossed the meadow and found the first safe trail deeper into the candy world.',
       worldW: 2280,
       start: { x: 70, y: 392 },
@@ -379,7 +381,7 @@
       decor: [],
       platforms: [
         P(0, 452, 330, 80, 'icing'), P(250, 436, 300, 96, 'icing'), P(420, 392, 160, 22, 'cookie'),
-        P(640, 352, 150, 20, 'cookie'), P(850, 352, 240, 20, 'cookie'), P(1130, 420, 220, 24, 'cookie'),
+        V(640, 352, 150, 20, 320, 372, 0.55, 'float'), P(850, 352, 240, 20, 'cookie'), P(1130, 420, 220, 24, 'cookie'),
         B(1220, 402, 80), P(1370, 378, 130, 20, 'cookie'), P(1540, 338, 140, 20, 'cookie'),
         P(1700, 420, 280, 90, 'icing'), P(1830, 290, 140, 18, 'cookie'), P(2020, 318, 120, 18, 'cookie'),
         P(940, 300, 78, 18, 'break')
@@ -397,14 +399,14 @@
       theme: 'licorice',
       chapter: 'Chapter 2 of 6',
       story: 'The lollipop field gives way to a pretzel road with twistier ledges and tighter footing.',
-      tip: 'The jumps are still forgiving, but the stage asks for steadier timing and shorter landings.',
+      tip: 'The jumps are still forgiving, but tilted cookie planks ask for steadier timing and shorter landings.',
       success: 'You made it across Pretzel Path and kept your footing through the twists.',
       worldW: 2540,
       start: { x: 70, y: 390 },
       goal: { x: 2410, y: 275 },
       decor: [],
       platforms: [
-        P(0, 452, 290, 80, 'choco'), P(320, 412, 165, 22, 'cookie'), P(540, 372, 145, 20, 'cookie'), P(730, 332, 135, 20, 'choco'),
+        P(0, 452, 290, 80, 'choco'), P(320, 412, 165, 22, 'cookie'), P(540, 372, 145, 20, 'tilt'), P(730, 332, 135, 20, 'choco'),
         M(910, 320, 128, 22, 910, 1090, 1.2), P(1145, 392, 155, 20, 'cookie'), B(1320, 392, 80), P(1450, 350, 150, 20, 'choco'),
         M(1660, 300, 128, 22, 1660, 1860, 1.25), P(1910, 422, 180, 22, 'cookie'), P(2140, 376, 150, 20, 'cookie'),
         P(2310, 330, 150, 20, 'choco'), P(2390, 420, 170, 80, 'icing'), P(1210, 300, 78, 18, 'break'), P(2000, 330, 82, 18, 'break')
@@ -422,7 +424,7 @@
       theme: 'falls',
       chapter: 'Chapter 3 of 6',
       story: 'Cold cream cliffs and dripping frosting make the route feel taller, slicker, and more vertical.',
-      tip: 'Use the safer icing shelves, then hop across the softer cookie ledges when the path narrows.',
+      tip: 'Use the safer icing shelves, then ride the slick frosting slides when the path narrows.',
       success: 'You climbed past the cold cream ledges and cleared the falls.',
       worldW: 2840,
       start: { x: 70, y: 390 },
@@ -430,7 +432,7 @@
       decor: [],
       platforms: [
         P(0, 452, 280, 80, 'icing'), P(320, 408, 155, 22, 'choco'), P(520, 365, 160, 20, 'cookie'), B(730, 395, 80),
-        P(860, 430, 170, 22, 'icing'), M(1100, 368, 130, 22, 1100, 1270, 1.15), P(1320, 330, 150, 20, 'icing'),
+        P(860, 430, 170, 22, 'icing'), M(1100, 368, 130, 22, 1100, 1270, 1.15), P(1320, 330, 150, 20, 'slide', { slideDir: 0.26 }),
         P(1540, 392, 180, 22, 'icing'), B(1775, 392, 82), P(1930, 350, 160, 20, 'cookie'), M(2175, 300, 132, 22, 2175, 2365, 1.3),
         P(2410, 256, 120, 20, 'icing'), P(2570, 306, 120, 20, 'icing'), P(2650, 420, 220, 84, 'icing'), P(1460, 286, 82, 18, 'break'), P(2050, 304, 82, 18, 'break')
       ],
@@ -447,7 +449,7 @@
       theme: 'woods',
       chapter: 'Chapter 4 of 6',
       story: 'Tall waffle stacks lean over the trail, turning the forest into a maze of crisp platforms and syrupy gaps.',
-      tip: 'Read the lanes before you jump. Waffle Woods works best when you keep your rhythm instead of rushing.',
+      tip: 'Read the lanes before you jump. Syrup pads slow you down, so keep your rhythm instead of rushing.',
       success: 'You found the right rhythm and made it through Waffle Woods.',
       worldW: 3080,
       start: { x: 70, y: 390 },
@@ -456,7 +458,7 @@
       platforms: [
         P(0, 452, 280, 80, 'wafer'), P(320, 414, 150, 22, 'cookie'), P(520, 378, 130, 20, 'choco'), P(700, 338, 130, 20, 'cookie'),
         M(900, 310, 130, 22, 900, 1070, 1.15), P(1100, 388, 160, 22, 'choco'), P(1325, 348, 150, 20, 'cookie'), B(1510, 392, 82),
-        P(1660, 338, 145, 20, 'choco'), M(1870, 284, 128, 22, 1870, 2040, 1.2), P(2090, 420, 190, 22, 'cookie'),
+        P(1660, 338, 145, 20, 'syrup'), M(1870, 284, 128, 22, 1870, 2040, 1.2), P(2090, 420, 190, 22, 'cookie'),
         P(2320, 372, 150, 20, 'cookie'), B(2525, 372, 80), P(2660, 316, 130, 20, 'choco'), P(2830, 272, 125, 20, 'cookie'), P(2900, 420, 180, 82, 'icing'),
         P(1215, 306, 82, 18, 'break'), P(2170, 328, 82, 18, 'break'), P(2725, 262, 82, 18, 'break')
       ],
@@ -473,7 +475,7 @@
       theme: 'courtyard',
       chapter: 'Chapter 5 of 6',
       story: 'Layered cake towers and frosting ledges surround the courtyard, with sugar barriers blocking the cleanest route.',
-      tip: 'This stage mixes cake-like stacks, gates, and tighter lanes. Save Sugar Rush for the places that matter.',
+      tip: 'This stage mixes cake-like stacks, lifts, gates, and tighter lanes. Save Sugar Rush for the places that matter.',
       success: 'You broke through the courtyard routes and opened the way forward.',
       worldW: 3360,
       start: { x: 70, y: 390 },
@@ -482,7 +484,7 @@
       platforms: [
         P(0, 452, 300, 80, 'icing'), P(350, 418, 165, 22, 'cookie'), P(560, 372, 140, 20, 'choco'), P(760, 330, 145, 20, 'cookie'),
         P(950, 406, 180, 22, 'icing'), B(1160, 392, 80), P(1290, 348, 150, 20, 'cookie'), G(1510, 296, 84, 90),
-        P(1588, 326, 96, 18, 'icing'), M(1680, 308, 132, 22, 1680, 1815, 1.02), P(1895, 246, 150, 20, 'cookie'), P(2120, 390, 190, 22, 'choco'), B(2345, 376, 82),
+        V(1588, 326, 96, 18, 286, 338, 0.72, 'elevator'), M(1680, 308, 132, 22, 1680, 1815, 1.02), P(1895, 246, 150, 20, 'cookie'), P(2120, 390, 190, 22, 'choco'), B(2345, 376, 82),
         P(2490, 330, 140, 20, 'icing'), G(2700, 274, 82, 88), P(2768, 300, 92, 18, 'icing'), M(2868, 286, 120, 22, 2868, 3005, 1.05), P(3060, 232, 140, 20, 'cookie'),
         P(3185, 420, 190, 80, 'icing'), P(1030, 306, 82, 18, 'break'), P(2240, 320, 82, 18, 'break')
       ],
@@ -499,7 +501,7 @@
       theme: 'keep',
       chapter: 'Chapter 6 of 6',
       story: 'High above the candy roofs, the child finally sees the return door beyond the kingdom gate.',
-      tip: 'Finale: the path is denser and higher, but the route is still readable if you follow the strongest platforms.',
+      tip: 'Finale: the path is denser and higher, with blinking gates that reward patience over panic.',
       success: 'You cleared the kingdom heights and reached the way home.',
       worldW: 3600,
       start: { x: 70, y: 390 },
@@ -507,10 +509,10 @@
       decor: [],
       platforms: [
         P(0, 452, 290, 80, 'choco'), P(340, 416, 165, 22, 'cookie'), P(555, 370, 135, 20, 'choco'), P(740, 330, 145, 20, 'choco'),
-        B(950, 392, 82), P(1100, 350, 150, 20, 'cookie'), G(1320, 274, 92, 110), P(1470, 236, 140, 20, 'cookie'),
+        B(950, 392, 82), P(1100, 350, 150, 20, 'cookie'), TG(1320, 274, 92, 110, 0), P(1470, 236, 140, 20, 'cookie'),
         M(1680, 286, 132, 22, 1680, 1860, 1.2), P(1910, 414, 180, 22, 'cookie'), P(2140, 370, 145, 20, 'choco'), B(2320, 360, 82),
-        G(2470, 250, 92, 110), P(2630, 212, 140, 20, 'cookie'), M(2840, 248, 132, 22, 2840, 3025, 1.24), P(3075, 318, 150, 20, 'choco'),
-        G(3250, 200, 90, 110), P(3370, 176, 115, 20, 'cookie'), P(3420, 420, 180, 84, 'icing'), P(1180, 306, 82, 18, 'break'), P(2030, 330, 82, 18, 'break'), P(2950, 282, 82, 18, 'break')
+        TG(2470, 250, 92, 110, 60), P(2630, 212, 140, 20, 'cookie'), M(2840, 248, 132, 22, 2840, 3025, 1.24), P(3075, 318, 150, 20, 'choco'),
+        TG(3250, 200, 90, 110, 120), P(3370, 176, 115, 20, 'cookie'), P(3420, 420, 180, 84, 'icing'), P(1180, 306, 82, 18, 'break'), P(2030, 330, 82, 18, 'break'), P(2950, 282, 82, 18, 'break')
       ],
       candies: [
         C('star_blue', 150, 406), C('bean_red', 390, 382), C('bean_orange', 470, 382), C('star_purple', 600, 328), C('bean_green', 800, 282),
@@ -739,7 +741,7 @@
     goal = { ...level.goal, w: 48, h: 102 };
     Object.assign(player, {
       x: level.start.x, y: level.start.y, w: 34, h: 56, vx: 0, vy: 0,
-      onGround: false, face: 1, coyote: 0, jumpBuffer: 0, anim: 0,
+      onGround: false, face: 1, coyote: 0, jumpBuffer: 0, anim: 0, surfaceKind: null,
       invuln: 0, landedTimer: 0, hurtTimer: 0, hearts: maxHearts,
       lastSafe: { x: level.start.x, y: level.start.y }
     });
@@ -771,7 +773,7 @@
   }
 
   function isSafePlatform(p) {
-    return p.kind === 'icing' || p.kind === 'choco' || p.kind === 'wafer';
+    return ['icing', 'choco', 'wafer', 'float', 'elevator', 'slide'].includes(p.kind);
   }
 
   function enemyHasGroundAhead(enemy) {
@@ -879,6 +881,17 @@
           p.x = Math.max(p.minX, Math.min(p.maxX, p.x));
         }
       }
+      if ((p.kind === 'float' || p.kind === 'elevator') && p.alive) {
+        p.y += p.speed * p.dir;
+        if (p.y < p.minY || p.y > p.maxY) {
+          p.dir *= -1;
+          p.y = Math.max(p.minY, Math.min(p.maxY, p.y));
+        }
+      }
+      if (p.kind === 'blinkGate') {
+        const cycle = (p.openFor || 80) + (p.closedFor || 90);
+        p.open = ((time + (p.phase || 0)) % cycle) < (p.openFor || 80);
+      }
       if (p.hit > 0) p.hit--;
       if (p.kind === 'cookie' && p.alive && p.crumbleTimer > 0) {
         p.crumbleTimer = Math.max(0, p.crumbleTimer - (player.onGround ? 0 : 0.5));
@@ -903,6 +916,7 @@
 
     if (left) { player.vx -= accel * speedBoost; player.face = -1; }
     if (right) { player.vx += accel * speedBoost; player.face = 1; }
+    if (player.onGround && player.surfaceKind === 'syrup') player.vx *= 0.72;
     if (!left && !right) player.vx *= friction;
     player.vx = Math.max(-maxSpeed * speedBoost, Math.min(maxSpeed * speedBoost, player.vx));
     if (Math.abs(player.vx) < 0.05) player.vx = 0;
@@ -933,11 +947,12 @@
     player.x = Math.max(0, Math.min(WORLD_W - player.w, player.x));
     player.y += player.vy;
     player.onGround = false;
+    player.surfaceKind = null;
 
     let landing = null;
     let landingY = Infinity;
     for (const p of platforms) {
-      if (!p.alive || p.kind === 'sugarGate') continue;
+      if (!p.alive || p.kind === 'sugarGate' || (p.kind === 'blinkGate' && !p.open)) continue;
       const overlapX = player.x + player.w > p.x + 5 && player.x < p.x + p.w - 5;
       const wasAbove = prevY + player.h <= p.y + 2;
       const crossedTop = player.y + player.h >= p.y && player.y + player.h <= p.y + p.h + 26;
@@ -961,6 +976,10 @@
         player.vy = 0;
         if (isSafePlatform(landing)) player.lastSafe = { x: player.x, y: player.y };
         if (landing.kind === 'moving') player.x += landing.speed * landing.dir;
+        if (landing.kind === 'float' || landing.kind === 'elevator') player.y += landing.speed * landing.dir;
+        if (landing.kind === 'tilt') player.vx += (player.x + player.w / 2 < landing.x + landing.w / 2 ? -0.18 : 0.18);
+        if (landing.kind === 'slide') player.vx += landing.slideDir || 0.26;
+        player.surfaceKind = landing.kind;
         if (landing.kind === 'cookie') {
           landing.crumbleTimer = Math.min(90, (landing.crumbleTimer || 0) + 2);
           if (landing.crumbleTimer === 58) sound('gate');
@@ -993,7 +1012,8 @@
     }
 
     for (const p of platforms) {
-      if (!p.alive || p.kind !== 'sugarGate') continue;
+      if (!p.alive || (p.kind !== 'sugarGate' && p.kind !== 'blinkGate')) continue;
+      if (p.kind === 'blinkGate' && p.open) continue;
       if (rectsOverlap(player, p)) {
         if (inRush) {
           p.alive = false;
@@ -1238,14 +1258,30 @@
         else img = p.w > 160 ? assets.cookie_long : assets.cookie_block;
       }
       if (p.kind === 'wafer') img = p.w > 200 ? assets.wafer_long : assets.wafer_platform;
+      if (p.kind === 'syrup') img = p.w > 140 ? assets.choco_long : assets.choco_double;
+      if (p.kind === 'tilt') img = assets.wafer_bar;
+      if (p.kind === 'slide') img = assets.icing_block2;
       if (p.kind === 'moving') img = assets.wafer_moving;
+      if (p.kind === 'elevator') img = assets.icing_block;
       if (p.kind === 'break') img = p.hit ? assets.cookie_cracked_2 : assets.cookie_cracked_1;
       if (p.kind === 'sugarGate') {
         drawImageBottom(assets.gate_intact, p.x, p.y + p.h, p.h + 18, p.w);
         continue;
       }
+      if (p.kind === 'blinkGate') {
+        ctx.save();
+        ctx.globalAlpha = p.open ? 0.25 : 0.95;
+        drawImageBottom(assets.gate_intact, p.x, p.y + p.h, p.h + 18, p.w);
+        ctx.restore();
+        continue;
+      }
       if (p.kind === 'bounce') {
         drawImageBottom(assets.marshmallow_1, p.x - 4, p.y + p.h + 6, 40, p.w + 8);
+        continue;
+      }
+      if (p.kind === 'float') {
+        drawImageBottom(assets.lollipop_pink, p.x + p.w / 2 - 24, p.y + p.h + 18, 52, 48);
+        drawImageBottom(assets.cookie_round, p.x, p.y + p.h + 10, 34, p.w);
         continue;
       }
       drawImageBottom(img, p.x, drawY + p.h + 12, h, p.w);
