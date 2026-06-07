@@ -1,0 +1,202 @@
+:root {
+  --pink: #ff74ba;
+  --sky: #72ddff;
+  --mint: #79f0c3;
+  --choco: #5a2e20;
+  --cream: #fff8ea;
+  --berry: #7a3c65;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; height: 100%; overflow: hidden; }
+body {
+  font-family: Georgia, "Avenir Next", "Trebuchet MS", sans-serif;
+  background: #0f1b1e;
+  color: #472316;
+}
+.shell,
+.game-wrap {
+  width: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+}
+.game-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top, rgba(114,221,255,.18), transparent 48%),
+    linear-gradient(180deg, #102024 0%, #081012 100%);
+}
+.game-stage {
+  position: relative;
+  width: min(100vw, calc(100dvh * 16 / 9));
+  height: min(100dvh, calc(100vw * 9 / 16));
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #000;
+}
+.game-wrap:fullscreen .game-stage {
+  width: 100vw;
+  height: 100vh;
+}
+canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+button {
+  border: 0;
+  border-radius: 999px;
+  background: var(--pink);
+  color: white;
+  font-weight: 900;
+  min-height: 42px;
+  padding: 10px 12px;
+  cursor: pointer;
+  box-shadow: 0 5px 0 #a33c72, 0 10px 22px rgba(90, 46, 32, .18);
+  font-size: .84rem;
+  touch-action: manipulation;
+}
+button.secondary {
+  background: #6ecbff;
+  box-shadow: 0 5px 0 #357fa6, 0 10px 22px rgba(90, 46, 32, .18);
+}
+button:active { transform: translateY(2px); box-shadow: 0 2px 0 #a33c72; }
+button.secondary:active { box-shadow: 0 2px 0 #357fa6; }
+.game-ui {
+  position: absolute;
+  top: calc(8px + var(--safe-top));
+  left: calc(8px + var(--safe-left));
+  right: calc(8px + var(--safe-right));
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+  z-index: 6;
+}
+.hud-button {
+  min-height: 28px;
+  min-width: 0;
+  padding: 5px 8px;
+  font-size: .62rem;
+  border-radius: 14px;
+  opacity: .62;
+  box-shadow: 0 2px 0 rgba(53, 127, 166, .72), 0 5px 10px rgba(0, 0, 0, .12);
+}
+#heroButton {
+  min-width: 30px;
+  padding-inline: 0;
+  flex: 0 0 30px;
+}
+.game-wrap.map-mode .hud-button {
+  opacity: .52;
+}
+.touch-controls {
+  position: absolute;
+  left: calc(12px + var(--safe-left));
+  right: calc(12px + var(--safe-right));
+  bottom: calc(12px + var(--safe-bottom));
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  pointer-events: none;
+  z-index: 6;
+}
+.touch-controls button {
+  pointer-events: auto;
+  min-width: 0;
+  min-height: 52px;
+  opacity: .8;
+  font-size: .92rem;
+  border-radius: 18px;
+}
+.touch-controls button[data-hold="left"],
+.touch-controls button[data-hold="right"] {
+  width: 72px;
+}
+.touch-controls [data-hold="right"] {
+  margin-left: 10px;
+}
+.touch-controls .jump {
+  width: 132px;
+  margin-left: auto;
+  background: #45cb9e;
+  box-shadow: 0 5px 0 #307f66, 0 10px 22px rgba(90,46,32,.18);
+}
+.game-wrap.map-mode .touch-controls button {
+  min-height: 44px;
+  opacity: .42;
+  font-size: .8rem;
+}
+@media (hover: hover) and (pointer: fine) {
+  .touch-controls { display: none; }
+}
+@media (min-width: 760px) {
+  button {
+    min-height: 50px;
+    padding: 12px 14px;
+    font-size: .96rem;
+  }
+  .hud-button {
+    min-height: 42px;
+    padding: 8px 12px;
+    font-size: .82rem;
+    border-radius: 999px;
+    opacity: .9;
+    box-shadow: 0 5px 0 #357fa6, 0 10px 22px rgba(90, 46, 32, .18);
+  }
+  #heroButton {
+    min-width: 72px;
+    padding-inline: 10px;
+    flex: 0 0 auto;
+  }
+  .game-wrap.map-mode .hud-button {
+    min-height: 34px;
+    padding: 6px 10px;
+    font-size: .72rem;
+    opacity: .72;
+  }
+  .touch-controls {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    gap: 8px;
+  }
+  .touch-controls button {
+    min-width: 96px;
+    min-height: 72px;
+    opacity: .94;
+    font-size: 1rem;
+    border-radius: 22px;
+  }
+  .touch-controls button[data-hold="left"],
+  .touch-controls button[data-hold="right"] {
+    width: clamp(96px, 24vw, 132px);
+  }
+  .touch-controls .jump {
+    width: clamp(120px, 28vw, 148px);
+  }
+}
+@media (max-width: 430px) {
+  #fullscreenButton {
+    display: none;
+  }
+}
+@media (orientation: portrait) and (hover: none) and (pointer: coarse) {
+  .game-stage {
+    position: absolute;
+    width: 100dvh;
+    height: calc(100dvh * 9 / 16);
+    max-width: none;
+    max-height: none;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) rotate(90deg);
+    transform-origin: center center;
+  }
+}
