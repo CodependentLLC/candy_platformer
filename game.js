@@ -102,7 +102,8 @@
   }
 
   function updateMenuButtons() {
-    resumeButton.disabled = !hasActiveRun || gameState === 'menu' && menuReturnState === 'menu';
+    const resumable = hasActiveRun && ['playing', 'map'].includes(menuReturnState);
+    resumeButton.disabled = !resumable;
   }
 
   function updateUiMode() {
@@ -174,8 +175,8 @@
   }
 
   function resumeRun() {
-    if (!hasActiveRun) return;
-    gameState = menuReturnState === 'menu' ? 'map' : menuReturnState;
+    if (!hasActiveRun || !['playing', 'map'].includes(menuReturnState)) return;
+    gameState = menuReturnState;
     paused = false;
     updatePauseButton();
     updateUiMode();
@@ -190,14 +191,15 @@
   }
 
   function openWorldMap() {
-    loadLevel(Math.max(0, Math.min(unlockedLevel, mapLevelIndex)));
+    const targetIndex = Math.max(0, Math.min(unlockedLevel, mapLevelIndex));
+    loadLevel(targetIndex);
     hasActiveRun = true;
     menuReturnState = 'map';
     gameState = 'map';
     paused = false;
-    mapLevelIndex = Math.min(mapLevelIndex, unlockedLevel);
-    mapMarkerFromIndex = mapLevelIndex;
-    mapMarkerToIndex = mapLevelIndex;
+    mapLevelIndex = targetIndex;
+    mapMarkerFromIndex = targetIndex;
+    mapMarkerToIndex = targetIndex;
     mapMarkerProgress = 1;
     mapRevealTimer = 0;
     mapArrivalTimer = 0;
@@ -352,7 +354,13 @@
   function G(x, y, w, h = 110) { return P(x, y, w, h, 'sugarGate'); }
   function E(x, y, kind, range, speed = null) {
     const baseSpeed = speed ?? (kind === 'jaw' ? 1.55 : kind === 'beetle' ? 1.2 : kind === 'marsh' ? 1.0 : 0.95);
-    return { x, y, w: 48, h: 36, kind, minX: x - range / 2, maxX: x + range / 2, vx: baseSpeed, alive: true, hurtTimer: 0 };
+    return {
+      x, y, w: 48, h: 36, kind,
+      spawnX: x, spawnY: y,
+      minX: x - range / 2, maxX: x + range / 2,
+      baseSpeed, vx: baseSpeed,
+      alive: true, hurtTimer: 0, respawnTimer: 0
+    };
   }
   function C(kind, x, y) { return [kind, x, y]; }
   function D(x, y, img) { return { x, y, img }; }
@@ -473,9 +481,9 @@
       decor: [],
       platforms: [
         P(0, 452, 300, 80, 'icing'), P(350, 418, 165, 22, 'cookie'), P(560, 372, 140, 20, 'choco'), P(760, 330, 145, 20, 'cookie'),
-        P(950, 406, 180, 22, 'cookie'), B(1160, 392, 80), P(1290, 348, 150, 20, 'cookie'), G(1510, 274, 100, 112),
-        M(1660, 300, 128, 22, 1660, 1830, 1.18), P(1895, 246, 150, 20, 'cookie'), P(2120, 390, 190, 22, 'choco'), B(2345, 376, 82),
-        P(2490, 330, 140, 20, 'cookie'), G(2700, 252, 90, 110), M(2840, 280, 132, 22, 2840, 3020, 1.22), P(3060, 232, 140, 20, 'cookie'),
+        P(950, 406, 180, 22, 'icing'), B(1160, 392, 80), P(1290, 348, 150, 20, 'cookie'), G(1510, 296, 84, 90),
+        P(1588, 326, 96, 18, 'icing'), M(1680, 308, 132, 22, 1680, 1815, 1.02), P(1895, 246, 150, 20, 'cookie'), P(2120, 390, 190, 22, 'choco'), B(2345, 376, 82),
+        P(2490, 330, 140, 20, 'icing'), G(2700, 274, 82, 88), P(2768, 300, 92, 18, 'icing'), M(2868, 286, 120, 22, 2868, 3005, 1.05), P(3060, 232, 140, 20, 'cookie'),
         P(3185, 420, 190, 80, 'icing'), P(1030, 306, 82, 18, 'break'), P(2240, 320, 82, 18, 'break')
       ],
       candies: [
@@ -483,8 +491,8 @@
         C('star_pink', 1000, 358), C('bean_red', 1178, 348), C('star_blue', 1360, 300), C('bean_yellow', 1580, 240), C('star_purple', 1725, 250),
         C('bean_orange', 1940, 198), C('star_blue', 2180, 344), C('bean_green', 2365, 330), C('star_pink', 2565, 284), C('bean_blue', 2725, 206), C('star_purple', 2898, 232), C('star_blue', 3138, 184)
       ],
-      enemies: [E(430, 384, 'gummy', 100), E(812, 286, 'beetle', 110), E(1320, 314, 'marsh', 120), E(1990, 202, 'jaw', 90), E(2180, 354, 'beetle', 120), E(2940, 236, 'jaw', 90)],
-      checkpoints: [{ x: 1410, y: 320, active: false }, { x: 2470, y: 304, active: false }, { x: 2890, y: 254, active: false }]
+      enemies: [E(430, 384, 'gummy', 100), E(812, 286, 'beetle', 90), E(1360, 314, 'marsh', 90), E(1990, 202, 'jaw', 72), E(2180, 354, 'beetle', 100), E(3100, 188, 'jaw', 70)],
+      checkpoints: [{ x: 1410, y: 320, active: false }, { x: 2470, y: 304, active: false }, { x: 2890, y: 266, active: false }, { x: 3120, y: 206, active: false }]
     },
     {
       name: 'Kingdom Gate',
@@ -610,6 +618,7 @@
 
   function enterWorldMap(nextLevel) {
     const clamped = Math.max(0, Math.min(unlockedLevel, nextLevel));
+    menuReturnState = 'map';
     mapLevelIndex = clamped;
     mapPulse = 0;
     mapMoveCooldown = 0;
@@ -716,6 +725,7 @@
 
   function loadLevel(i) {
     levelIndex = i;
+    menuReturnState = 'playing';
     level = LEVELS[i];
     WORLD_W = level.worldW;
     platforms = level.platforms.map(p => ({
@@ -724,7 +734,7 @@
       respawnTimer: 0
     }));
     candies = level.candies.map(([kind, x, y]) => ({ kind, x, y, taken: false, bob: Math.random() * Math.PI * 2 }));
-    enemies = level.enemies.map(e => ({ ...e }));
+    enemies = level.enemies.map(e => ({ ...e, x: e.spawnX, y: e.spawnY, vx: e.baseSpeed, alive: true, hurtTimer: 0, respawnTimer: 0 }));
     checkpoints = level.checkpoints.map(c => ({ ...c }));
     goal = { ...level.goal, w: 48, h: 102 };
     Object.assign(player, {
@@ -875,6 +885,22 @@
       }
     }
 
+    for (const enemy of enemies) {
+      if (enemy.alive || enemy.respawnTimer <= 0) continue;
+      enemy.respawnTimer--;
+      const farFromPlayer = Math.abs((player.x + player.w / 2) - (enemy.spawnX + enemy.w / 2)) > 180;
+      if (enemy.respawnTimer <= 0 && farFromPlayer) {
+        enemy.x = enemy.spawnX;
+        enemy.y = enemy.spawnY;
+        enemy.vx = enemy.baseSpeed;
+        enemy.alive = true;
+        enemy.hurtTimer = 0;
+        burst(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, 10, '#79f0c3');
+      } else if (enemy.respawnTimer <= 0) {
+        enemy.respawnTimer = 45;
+      }
+    }
+
     if (left) { player.vx -= accel * speedBoost; player.face = -1; }
     if (right) { player.vx += accel * speedBoost; player.face = 1; }
     if (!left && !right) player.vx *= friction;
@@ -994,16 +1020,19 @@
       }
       if (enemy.hurtTimer > 0) enemy.hurtTimer--;
 
-      const stomp = rectsOverlap(player, enemy) && player.vy > 0 && prevY + player.h <= enemy.y + 10;
+      const enemyHit = { x: enemy.x + 6, y: enemy.y + 4, w: enemy.w - 12, h: enemy.h - 4 };
+      const stomp = rectsOverlap(player, enemyHit) && player.vy > 1.5 && prevY + player.h <= enemy.y + 12;
       if (stomp) {
         enemy.alive = false;
         enemy.hurtTimer = 40;
-        player.vy = -11.5;
+        enemy.respawnTimer = 300;
+        player.vy = -10.8;
+        player.invuln = Math.max(player.invuln, 18);
         score += 3;
         sugar = Math.min(100, sugar + 10);
         burst(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, 14, '#79f0c3');
         sound('stomp');
-      } else if (rectsOverlap(player, enemy) && player.invuln <= 0) {
+      } else if (rectsOverlap(player, enemyHit) && player.invuln <= 0 && player.vy > -3) {
         hurtPlayer();
       }
     }
