@@ -7,6 +7,7 @@
   const menuButton = document.getElementById('menuButton');
   const heroButton = document.getElementById('heroButton');
   const menuOverlay = document.getElementById('menuOverlay');
+  const resumeButton = document.getElementById('resumeButton');
   const startButton = document.getElementById('startButton');
   const mapButton = document.getElementById('mapButton');
   const menuBoyButton = document.getElementById('menuBoyButton');
@@ -46,6 +47,8 @@
   const saveKey = 'candy-platformer-unlocked-level';
   const heroSaveKey = 'candy-platformer-selected-hero';
   let unlockedLevel = 0;
+  let hasActiveRun = false;
+  let menuReturnState = 'map';
 
   const assets = {};
   const worldMapBackground = new Image();
@@ -98,6 +101,10 @@
     menuGirlButton.classList.toggle('active', selectedHero === 'girl');
   }
 
+  function updateMenuButtons() {
+    resumeButton.disabled = !hasActiveRun || gameState === 'menu' && menuReturnState === 'menu';
+  }
+
   function updateUiMode() {
     const wrap = canvas.parentElement.parentElement;
     const mapMode = gameState === 'map';
@@ -107,6 +114,7 @@
     wrap.classList.toggle('play-mode', gameState === 'playing');
     wrap.classList.toggle('end-mode', ['gameover', 'ending'].includes(gameState));
     menuOverlay.hidden = gameState !== 'menu';
+    updateMenuButtons();
     soundButton.textContent = compact ? (soundOn ? 'SFX' : 'Off') : (mapMode ? (soundOn ? 'Sound' : 'Mute') : (soundOn ? 'Sound On' : 'Sound Off'));
     fullscreenButton.textContent = compact ? 'Full' : 'Fullscreen';
     updatePauseButton();
@@ -158,19 +166,33 @@
   }
 
   function openMenu() {
+    if (gameState !== 'menu') menuReturnState = gameState;
     gameState = 'menu';
     paused = false;
     updatePauseButton();
     updateUiMode();
   }
 
+  function resumeRun() {
+    if (!hasActiveRun) return;
+    gameState = menuReturnState === 'menu' ? 'map' : menuReturnState;
+    paused = false;
+    updatePauseButton();
+    updateUiMode();
+    sound('click');
+  }
+
   function startAdventure() {
     resetRun(0);
+    hasActiveRun = true;
+    menuReturnState = 'playing';
     sound('click');
   }
 
   function openWorldMap() {
     loadLevel(Math.max(0, Math.min(unlockedLevel, mapLevelIndex)));
+    hasActiveRun = true;
+    menuReturnState = 'map';
     gameState = 'map';
     paused = false;
     mapLevelIndex = Math.min(mapLevelIndex, unlockedLevel);
@@ -425,8 +447,8 @@
       decor: [],
       platforms: [
         P(0, 452, 280, 80, 'wafer'), P(320, 414, 150, 22, 'cookie'), P(520, 378, 130, 20, 'choco'), P(700, 338, 130, 20, 'cookie'),
-        M(900, 310, 130, 22, 900, 1070, 1.25), P(1100, 388, 160, 22, 'choco'), P(1325, 348, 150, 20, 'cookie'), B(1510, 392, 82),
-        P(1660, 338, 145, 20, 'choco'), M(1870, 284, 128, 22, 1870, 2040, 1.3), P(2090, 420, 190, 22, 'cookie'),
+        M(900, 310, 130, 22, 900, 1070, 1.15), P(1100, 388, 160, 22, 'choco'), P(1325, 348, 150, 20, 'cookie'), B(1510, 392, 82),
+        P(1660, 338, 145, 20, 'choco'), M(1870, 284, 128, 22, 1870, 2040, 1.2), P(2090, 420, 190, 22, 'cookie'),
         P(2320, 372, 150, 20, 'cookie'), B(2525, 372, 80), P(2660, 316, 130, 20, 'choco'), P(2830, 272, 125, 20, 'cookie'), P(2900, 420, 180, 82, 'icing'),
         P(1215, 306, 82, 18, 'break'), P(2170, 328, 82, 18, 'break'), P(2725, 262, 82, 18, 'break')
       ],
@@ -436,7 +458,7 @@
         C('bean_yellow', 1935, 236), C('star_purple', 2150, 384), C('bean_orange', 2365, 328), C('star_blue', 2550, 330), C('bean_green', 2700, 274), C('star_pink', 2890, 232)
       ],
       enemies: [E(382, 380, 'marsh', 110), E(722, 294, 'beetle', 110), E(1390, 314, 'gummy', 120), E(1730, 294, 'jaw', 120), E(2370, 338, 'beetle', 120), E(2860, 238, 'jaw', 90)],
-      checkpoints: [{ x: 1265, y: 328, active: false }, { x: 2240, y: 352, active: false }]
+      checkpoints: [{ x: 1265, y: 328, active: false }, { x: 1825, y: 262, active: false }, { x: 2240, y: 352, active: false }]
     },
     {
       name: 'Cake Courtyard',
@@ -450,10 +472,10 @@
       goal: { x: 3220, y: 210 },
       decor: [],
       platforms: [
-        P(0, 452, 300, 80, 'cookie'), P(350, 418, 165, 22, 'cookie'), P(560, 372, 140, 20, 'choco'), P(760, 330, 145, 20, 'cookie'),
+        P(0, 452, 300, 80, 'icing'), P(350, 418, 165, 22, 'cookie'), P(560, 372, 140, 20, 'choco'), P(760, 330, 145, 20, 'cookie'),
         P(950, 406, 180, 22, 'cookie'), B(1160, 392, 80), P(1290, 348, 150, 20, 'cookie'), G(1510, 274, 100, 112),
-        M(1660, 300, 128, 22, 1660, 1830, 1.3), P(1895, 246, 150, 20, 'cookie'), P(2120, 390, 190, 22, 'choco'), B(2345, 376, 82),
-        P(2490, 330, 140, 20, 'cookie'), G(2700, 252, 90, 110), M(2840, 280, 132, 22, 2840, 3020, 1.35), P(3060, 232, 140, 20, 'cookie'),
+        M(1660, 300, 128, 22, 1660, 1830, 1.18), P(1895, 246, 150, 20, 'cookie'), P(2120, 390, 190, 22, 'choco'), B(2345, 376, 82),
+        P(2490, 330, 140, 20, 'cookie'), G(2700, 252, 90, 110), M(2840, 280, 132, 22, 2840, 3020, 1.22), P(3060, 232, 140, 20, 'cookie'),
         P(3185, 420, 190, 80, 'icing'), P(1030, 306, 82, 18, 'break'), P(2240, 320, 82, 18, 'break')
       ],
       candies: [
@@ -462,7 +484,7 @@
         C('bean_orange', 1940, 198), C('star_blue', 2180, 344), C('bean_green', 2365, 330), C('star_pink', 2565, 284), C('bean_blue', 2725, 206), C('star_purple', 2898, 232), C('star_blue', 3138, 184)
       ],
       enemies: [E(430, 384, 'gummy', 100), E(812, 286, 'beetle', 110), E(1320, 314, 'marsh', 120), E(1990, 202, 'jaw', 90), E(2180, 354, 'beetle', 120), E(2940, 236, 'jaw', 90)],
-      checkpoints: [{ x: 1410, y: 320, active: false }, { x: 2470, y: 304, active: false }]
+      checkpoints: [{ x: 1410, y: 320, active: false }, { x: 2470, y: 304, active: false }, { x: 2890, y: 254, active: false }]
     },
     {
       name: 'Kingdom Gate',
@@ -478,8 +500,8 @@
       platforms: [
         P(0, 452, 290, 80, 'choco'), P(340, 416, 165, 22, 'cookie'), P(555, 370, 135, 20, 'choco'), P(740, 330, 145, 20, 'choco'),
         B(950, 392, 82), P(1100, 350, 150, 20, 'cookie'), G(1320, 274, 92, 110), P(1470, 236, 140, 20, 'cookie'),
-        M(1680, 286, 132, 22, 1680, 1860, 1.35), P(1910, 414, 180, 22, 'cookie'), P(2140, 370, 145, 20, 'choco'), B(2320, 360, 82),
-        G(2470, 250, 92, 110), P(2630, 212, 140, 20, 'cookie'), M(2840, 248, 132, 22, 2840, 3025, 1.4), P(3075, 318, 150, 20, 'choco'),
+        M(1680, 286, 132, 22, 1680, 1860, 1.2), P(1910, 414, 180, 22, 'cookie'), P(2140, 370, 145, 20, 'choco'), B(2320, 360, 82),
+        G(2470, 250, 92, 110), P(2630, 212, 140, 20, 'cookie'), M(2840, 248, 132, 22, 2840, 3025, 1.24), P(3075, 318, 150, 20, 'choco'),
         G(3250, 200, 90, 110), P(3370, 176, 115, 20, 'cookie'), P(3420, 420, 180, 84, 'icing'), P(1180, 306, 82, 18, 'break'), P(2030, 330, 82, 18, 'break'), P(2950, 282, 82, 18, 'break')
       ],
       candies: [
@@ -544,6 +566,7 @@
 
   menuBoyButton.addEventListener('click', () => { setHero('boy'); sound('click'); });
   menuGirlButton.addEventListener('click', () => { setHero('girl'); sound('click'); });
+  resumeButton.addEventListener('click', resumeRun);
   startButton.addEventListener('click', startAdventure);
   mapButton.addEventListener('click', openWorldMap);
 
@@ -603,6 +626,8 @@
   }
 
   function resetRun(startLevel = 0) {
+    hasActiveRun = true;
+    menuReturnState = 'playing';
     totalCandy = 0;
     nextExtraLifeAt = 45;
     lives = maxLives;
@@ -623,6 +648,8 @@
 
   function bootToGame() {
     loadLevel(0);
+    hasActiveRun = false;
+    menuReturnState = 'menu';
     gameState = 'menu';
     paused = false;
     mapLevelIndex = 0;
@@ -734,7 +761,7 @@
   }
 
   function isSafePlatform(p) {
-    return p.kind === 'icing' || p.kind === 'choco';
+    return p.kind === 'icing' || p.kind === 'choco' || p.kind === 'wafer';
   }
 
   function enemyHasGroundAhead(enemy) {
@@ -1010,7 +1037,7 @@
       const pad = { x: cp.x, y: cp.y, w: 46, h: 46 };
       if (!cp.active && rectsOverlap(player, pad)) {
         cp.active = true;
-        player.lastSafe = { x: cp.x, y: cp.y - 8 };
+        player.lastSafe = { x: player.x, y: player.y };
         player.hearts = Math.min(maxHearts, player.hearts + 1);
         burst(cp.x + 22, cp.y + 12, 14, '#fff27a');
         sound('checkpoint');

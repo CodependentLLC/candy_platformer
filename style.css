@@ -113,24 +113,29 @@ button.secondary:active { box-shadow: 0 2px 0 #357fa6; }
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: linear-gradient(180deg, rgba(15, 27, 30, .30), rgba(15, 27, 30, .48));
+  background:
+    radial-gradient(circle at top left, rgba(255,255,255,.24), transparent 28%),
+    linear-gradient(180deg, rgba(15, 27, 30, .12), rgba(15, 27, 30, .52));
   z-index: 7;
 }
 .game-wrap.menu-mode .menu-overlay {
   display: flex;
 }
 .menu-card {
-  width: min(100%, 560px);
-  padding: 24px 22px;
-  border-radius: 28px;
-  background: rgba(255, 248, 239, .92);
+  width: min(100%, 620px);
+  padding: 28px 24px 24px;
+  border-radius: 30px;
+  background:
+    linear-gradient(180deg, rgba(255,248,239,.97), rgba(255,242,248,.93)),
+    radial-gradient(circle at top, rgba(114,221,255,.18), transparent 45%);
   box-shadow: 0 24px 60px rgba(15, 27, 30, .24);
   text-align: center;
+  border: 2px solid rgba(255,255,255,.66);
 }
 .menu-card h1 {
-  margin: 6px 0 10px;
-  font-size: clamp(2rem, 4vw, 3rem);
-  line-height: 1;
+  margin: 8px 0 10px;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: .95;
   color: #d83787;
 }
 .menu-kicker {
@@ -141,11 +146,55 @@ button.secondary:active { box-shadow: 0 2px 0 #357fa6; }
   text-transform: uppercase;
   color: #7a3c65;
 }
+.menu-door {
+  width: 88px;
+  height: 88px;
+  margin: 14px auto 8px;
+  border-radius: 28px 28px 22px 22px;
+  background:
+    radial-gradient(circle at 60% 35%, rgba(255,255,255,.62), transparent 28%),
+    linear-gradient(180deg, #7fd8ff 0%, #49bdf3 45%, #2e8fcb 100%);
+  box-shadow: inset 0 0 0 6px rgba(255,255,255,.42), 0 14px 30px rgba(73, 189, 243, .28);
+  position: relative;
+}
+.menu-door::before {
+  content: '';
+  position: absolute;
+  inset: 16px 20px 18px;
+  border-radius: 20px 20px 14px 14px;
+  background: linear-gradient(180deg, #fff7d4 0%, #ffe8a0 100%);
+}
+.menu-door::after {
+  content: '';
+  position: absolute;
+  right: 18px;
+  top: 42px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #d83787;
+  box-shadow: 0 0 0 3px rgba(255,255,255,.58);
+}
 .menu-copy {
-  margin: 0 auto 18px;
-  max-width: 34ch;
+  margin: 0 auto 14px;
+  max-width: 36ch;
   font-size: 1rem;
   color: #5a2e20;
+}
+.menu-story {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.menu-story span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.72);
+  color: #7a3c65;
+  font-size: .78rem;
+  font-weight: 800;
 }
 .menu-heroes,
 .menu-actions {
@@ -162,10 +211,14 @@ button.secondary:active { box-shadow: 0 2px 0 #357fa6; }
   box-shadow: 0 5px 0 #307f66, 0 10px 22px rgba(90, 46, 32, .18);
 }
 .menu-actions {
-  margin-top: 16px;
+  margin-top: 18px;
 }
 .menu-actions button {
   min-width: 170px;
+}
+#resumeButton[disabled] {
+  opacity: .45;
+  cursor: default;
 }
 .touch-controls {
   position: absolute;
@@ -300,6 +353,12 @@ button.secondary:active { box-shadow: 0 2px 0 #357fa6; }
   #menuButton,
   #heroButton {
     min-width: 110px;
+  }
+  .menu-story {
+    gap: 6px;
+  }
+  .menu-story span {
+    font-size: .72rem;
   }
 }
 @media (orientation: portrait) and (hover: none) and (pointer: coarse) {
