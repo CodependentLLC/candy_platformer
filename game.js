@@ -4,7 +4,13 @@
   const W = canvas.width;
   const H = canvas.height;
 
+  const menuButton = document.getElementById('menuButton');
   const heroButton = document.getElementById('heroButton');
+  const menuOverlay = document.getElementById('menuOverlay');
+  const startButton = document.getElementById('startButton');
+  const mapButton = document.getElementById('mapButton');
+  const menuBoyButton = document.getElementById('menuBoyButton');
+  const menuGirlButton = document.getElementById('menuGirlButton');
   const soundButton = document.getElementById('soundButton');
   const fullscreenButton = document.getElementById('fullscreenButton');
   const pauseButton = document.getElementById('pauseButton');
@@ -68,6 +74,16 @@
 
   function updatePauseButton() {
     const compact = isMobileCanvas();
+    if (gameState === 'gameover') {
+      pauseButton.textContent = compact ? 'Try' : 'Try Again';
+      pauseButton.setAttribute('aria-pressed', 'false');
+      return;
+    }
+    if (gameState === 'ending') {
+      pauseButton.textContent = compact ? 'Again' : 'Play Again';
+      pauseButton.setAttribute('aria-pressed', 'false');
+      return;
+    }
     const isMap = gameState === 'map';
     pauseButton.textContent = isMap ? (compact ? 'Go' : 'Play') : (paused ? (compact ? 'Go' : 'Resume') : (compact ? 'II' : 'Pause'));
     pauseButton.setAttribute('aria-pressed', paused ? 'true' : 'false');
@@ -75,13 +91,22 @@
 
   function updateHeroButton() {
     const compact = isMobileCanvas();
-    heroButton.textContent = compact ? (selectedHero === 'boy' ? 'B' : 'G') : (selectedHero === 'boy' ? 'Boy' : 'Girl');
+    if (compact) heroButton.textContent = selectedHero === 'boy' ? 'Boy' : 'Girl';
+    else heroButton.textContent = selectedHero === 'boy' ? 'Hero: Boy' : 'Hero: Girl';
+    heroButton.setAttribute('aria-label', selectedHero === 'boy' ? 'Switch hero, current hero is boy' : 'Switch hero, current hero is girl');
+    menuBoyButton.classList.toggle('active', selectedHero === 'boy');
+    menuGirlButton.classList.toggle('active', selectedHero === 'girl');
   }
 
   function updateUiMode() {
+    const wrap = canvas.parentElement.parentElement;
     const mapMode = gameState === 'map';
     const compact = isMobileCanvas();
-    canvas.parentElement.parentElement.classList.toggle('map-mode', mapMode);
+    wrap.classList.toggle('menu-mode', gameState === 'menu');
+    wrap.classList.toggle('map-mode', mapMode);
+    wrap.classList.toggle('play-mode', gameState === 'playing');
+    wrap.classList.toggle('end-mode', ['gameover', 'ending'].includes(gameState));
+    menuOverlay.hidden = gameState !== 'menu';
     soundButton.textContent = compact ? (soundOn ? 'SFX' : 'Off') : (mapMode ? (soundOn ? 'Sound' : 'Mute') : (soundOn ? 'Sound On' : 'Sound Off'));
     fullscreenButton.textContent = compact ? 'Full' : 'Fullscreen';
     updatePauseButton();
@@ -124,6 +149,39 @@
     try {
       localStorage.setItem(saveKey, String(unlockedLevel));
     } catch {}
+  }
+
+  function setHero(nextHero) {
+    selectedHero = nextHero === 'girl' ? 'girl' : 'boy';
+    persistSelectedHero();
+    updateHeroButton();
+  }
+
+  function openMenu() {
+    gameState = 'menu';
+    paused = false;
+    updatePauseButton();
+    updateUiMode();
+  }
+
+  function startAdventure() {
+    resetRun(0);
+    sound('click');
+  }
+
+  function openWorldMap() {
+    loadLevel(Math.max(0, Math.min(unlockedLevel, mapLevelIndex)));
+    gameState = 'map';
+    paused = false;
+    mapLevelIndex = Math.min(mapLevelIndex, unlockedLevel);
+    mapMarkerFromIndex = mapLevelIndex;
+    mapMarkerToIndex = mapLevelIndex;
+    mapMarkerProgress = 1;
+    mapRevealTimer = 0;
+    mapArrivalTimer = 0;
+    updatePauseButton();
+    updateUiMode();
+    sound('click');
   }
 
   function selectMapNode(nextIndex) {
@@ -476,12 +534,18 @@
     { x: 868, y: 168, mobileX: 822, mobileY: 194, color: '#79f0c3', icon: 'candy_arch', badge: 'star_blue', plate: '#effff9', label: 'Gate', stamp: 'candy_arch', labelDy: 40, mobileLabelDy: 32 }
   ];
 
+  menuButton.addEventListener('click', openMenu);
+
   heroButton.addEventListener('click', () => {
-    selectedHero = selectedHero === 'boy' ? 'girl' : 'boy';
-    persistSelectedHero();
-    updateHeroButton();
+    setHero(selectedHero === 'boy' ? 'girl' : 'boy');
+    burst(player.x + player.w / 2, player.y + player.h / 2, 10, selectedHero === 'boy' ? '#72ddff' : '#ff74ba');
     sound('click');
   });
+
+  menuBoyButton.addEventListener('click', () => { setHero('boy'); sound('click'); });
+  menuGirlButton.addEventListener('click', () => { setHero('girl'); sound('click'); });
+  startButton.addEventListener('click', startAdventure);
+  mapButton.addEventListener('click', openWorldMap);
 
   soundButton.addEventListener('click', () => {
     soundOn = !soundOn;
@@ -496,6 +560,16 @@
       paused = false;
       updatePauseButton();
       updateUiMode();
+      sound('click');
+      return;
+    }
+    if (gameState === 'gameover') {
+      resetRun(0);
+      sound('click');
+      return;
+    }
+    if (gameState === 'ending') {
+      resetRun(Math.min(levelIndex, unlockedLevel));
       sound('click');
       return;
     }
@@ -549,7 +623,7 @@
 
   function bootToGame() {
     loadLevel(0);
-    gameState = 'map';
+    gameState = 'menu';
     paused = false;
     mapLevelIndex = 0;
     mapMarkerFromIndex = 0;
@@ -565,6 +639,7 @@
   addEventListener('keydown', e => {
     if (['ArrowLeft','ArrowRight','ArrowUp','Space','KeyA','KeyD','KeyW','KeyR','Enter'].includes(e.code)) e.preventDefault();
     keys.add(e.code);
+    if (gameState === 'menu' && e.code === 'Enter') startAdventure();
     if (gameState === 'playing' && ['ArrowUp','Space','KeyW'].includes(e.code)) jumpPressed = true;
     if (e.code === 'KeyR' && gameState === 'playing') loadLevel(levelIndex);
     if (e.code === 'KeyP' && gameState === 'playing') { paused = !paused; updatePauseButton(); }
@@ -599,6 +674,14 @@
       paused = false;
       updatePauseButton();
       updateUiMode();
+      return;
+    }
+    if (gameState === 'gameover') {
+      resetRun(0);
+      return;
+    }
+    if (gameState === 'ending') {
+      resetRun(Math.min(levelIndex, unlockedLevel));
       return;
     }
     if (gameState === 'playing') jumpPressed = true;
@@ -992,9 +1075,11 @@
 
   function respawn() {
     player.x = player.lastSafe.x;
-    player.y = player.lastSafe.y - 8;
+    player.y = player.lastSafe.y;
     player.vx = 0;
     player.vy = 0;
+    player.onGround = false;
+    snapSpawnToGround();
     player.invuln = 132;
     player.hurtTimer = 0;
     player.hearts = maxHearts;
@@ -1220,12 +1305,27 @@
   }
 
   function isMobileCanvas() {
-    return canvas.getBoundingClientRect().width < 760;
+    const coarse = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+    return coarse || Math.min(window.innerWidth, window.innerHeight) < 760;
   }
 
   function drawHUD() {
     const compact = isMobileCanvas();
-    if (gameState === 'map' || compact) return;
+    if (gameState === 'map') return;
+    if (compact) {
+      roundRect(12, 12, 158, 36, 14, 'rgba(255,255,255,.72)');
+      ctx.fillStyle = '#5a2e20';
+      ctx.font = '900 11px system-ui';
+      ctx.fillText(`H ${Math.max(0, player.hearts)}  L ${lives}  C ${score}`, 24, 34);
+      roundRect(W - 100, 12, 88, 24, 12, 'rgba(255,255,255,.66)');
+      ctx.fillStyle = '#d83787';
+      ctx.font = '900 10px system-ui';
+      ctx.fillText('Sugar', W - 90, 28);
+      roundRect(W - 48, 19, 28, 8, 4, 'rgba(90,46,32,.14)');
+      const compactMeter = sugarTimer > 0 ? 1 : sugar / 100;
+      roundRect(W - 48, 19, 28 * compactMeter, 8, 4, sugarTimer > 0 ? '#fff27a' : '#ff74ba');
+      return;
+    }
 
     roundRect(12, 12, 275, 74, 18, 'rgba(255,255,255,.90)');
     ctx.fillStyle = '#5a2e20';
@@ -1394,6 +1494,13 @@
       }
     }
 
+    if (compact) {
+      roundRect(18, H - 42, 140, 22, 11, 'rgba(255,248,239,.62)', '#ffffff');
+      ctx.fillStyle = '#5a2e20';
+      ctx.font = '800 10px system-ui';
+      ctx.fillText(LEVELS[mapLevelIndex].name, 88, H - 27);
+    }
+
     if (mapRevealTimer > 0) {
       roundRect(W / 2 - (compact ? 74 : 86), H - (compact ? 42 : 48), compact ? 148 : 172, 24, 12, 'rgba(255,248,239,.66)', '#ffffff');
       ctx.fillStyle = '#d83787';
@@ -1406,7 +1513,21 @@
 
   function drawWin() {
     const compact = isMobileCanvas();
-    roundRect(compact ? 86 : 176, compact ? 126 : 140, compact ? 788 : 608, compact ? 266 : 250, 28, 'rgba(255,245,252,.96)', '#ffffff');
+    if (compact) {
+      roundRect(90, H - 164, 780, 120, 24, 'rgba(255,245,252,.92)', '#ffffff');
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#d83787';
+      ctx.font = '900 24px system-ui';
+      ctx.fillText(levelIndex < LEVELS.length - 1 ? 'Chapter Clear!' : 'The Way Home Is Open!', W / 2, H - 126);
+      ctx.fillStyle = '#5a2e20';
+      ctx.font = '800 14px system-ui';
+      ctx.fillText(levelIndex < LEVELS.length - 1 ? level.success : 'Hold steady. The final scene is next.', W / 2, H - 96, 700);
+      ctx.font = '700 12px system-ui';
+      ctx.fillText('Tap Go to continue.', W / 2, H - 70);
+      ctx.textAlign = 'start';
+      return;
+    }
+    roundRect(176, 140, 608, 250, 28, 'rgba(255,245,252,.96)', '#ffffff');
     ctx.textAlign = 'center';
     ctx.fillStyle = '#d83787';
     ctx.font = compact ? '900 34px system-ui' : '900 42px system-ui';
@@ -1431,7 +1552,21 @@
 
   function drawEnding() {
     const compact = isMobileCanvas();
-    roundRect(compact ? 46 : 106, compact ? 60 : 78, compact ? 868 : 748, compact ? 420 : 388, 30, 'rgba(255,248,239,.98)', '#ffffff');
+    if (compact) {
+      roundRect(72, H - 206, 816, 158, 26, 'rgba(255,248,239,.94)', '#ffffff');
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#d83787';
+      ctx.font = '900 24px system-ui';
+      ctx.fillText('Run Complete', W / 2, H - 164);
+      ctx.fillStyle = '#5a2e20';
+      ctx.font = '800 14px system-ui';
+      ctx.fillText(`Total candy ${totalCandy}`, W / 2, H - 132);
+      ctx.font = '700 12px system-ui';
+      ctx.fillText('Tap Again to replay from your latest chapter.', W / 2, H - 102);
+      ctx.textAlign = 'start';
+      return;
+    }
+    roundRect(106, 78, 748, 388, 30, 'rgba(255,248,239,.98)', '#ffffff');
     ctx.textAlign = 'center';
     ctx.fillStyle = '#d83787';
     ctx.font = compact ? '900 18px system-ui' : '900 20px system-ui';
@@ -1452,6 +1587,18 @@
   }
 
   function drawPause() {
+    if (isMobileCanvas()) {
+      roundRect(290, H - 136, 380, 84, 22, 'rgba(255,248,239,.9)', '#ffffff');
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#d83787';
+      ctx.font = '900 22px system-ui';
+      ctx.fillText('Paused', W / 2, H - 102);
+      ctx.fillStyle = '#5a2e20';
+      ctx.font = '800 12px system-ui';
+      ctx.fillText('Tap Go to keep playing.', W / 2, H - 78);
+      ctx.textAlign = 'start';
+      return;
+    }
     roundRect(330, 208, 300, 124, 26, 'rgba(255,248,239,.96)', '#ffffff');
     ctx.textAlign = 'center';
     ctx.fillStyle = '#d83787';
@@ -1465,7 +1612,19 @@
 
   function drawGameOver() {
     const compact = isMobileCanvas();
-    roundRect(compact ? 86 : 176, compact ? 126 : 140, compact ? 788 : 608, compact ? 266 : 250, 28, 'rgba(255,245,252,.96)', '#ffffff');
+    if (compact) {
+      roundRect(82, H - 188, 796, 144, 24, 'rgba(255,245,252,.92)', '#ffffff');
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#d83787';
+      ctx.font = '900 26px system-ui';
+      ctx.fillText('Out Of Lives', W / 2, H - 142);
+      ctx.fillStyle = '#5a2e20';
+      ctx.font = '800 14px system-ui';
+      ctx.fillText('Tap Try to restart from Chapter 1.', W / 2, H - 106);
+      ctx.textAlign = 'start';
+      return;
+    }
+    roundRect(176, 140, 608, 250, 28, 'rgba(255,245,252,.96)', '#ffffff');
     ctx.textAlign = 'center';
     ctx.fillStyle = '#d83787';
     ctx.font = compact ? '900 34px system-ui' : '900 42px system-ui';

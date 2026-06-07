@@ -14,11 +14,28 @@
         <canvas id="gameCanvas" width="960" height="540" aria-label="Candy Quest Kids game canvas"></canvas>
 
         <div class="game-ui" aria-label="Game controls">
+          <button id="menuButton" class="hud-button secondary" type="button">Menu</button>
           <button id="heroButton" class="hud-button portrait-toggle secondary" type="button">Boy</button>
           <button id="pauseButton" class="hud-button secondary" type="button">Play</button>
           <button id="soundButton" class="hud-button secondary" type="button">Sound On</button>
           <button id="fullscreenButton" class="hud-button secondary" type="button">Fullscreen</button>
         </div>
+
+        <section id="menuOverlay" class="menu-overlay" aria-label="Main menu">
+          <div class="menu-card">
+            <p class="menu-kicker">Candy Platform Adventure</p>
+            <h1>Candy Quest Kids</h1>
+            <p class="menu-copy">Pick a hero, start a run, or jump straight to the world map.</p>
+            <div class="menu-heroes" role="group" aria-label="Choose hero">
+              <button id="menuBoyButton" class="menu-hero" type="button">Boy</button>
+              <button id="menuGirlButton" class="menu-hero" type="button">Girl</button>
+            </div>
+            <div class="menu-actions">
+              <button id="startButton" type="button">Start Adventure</button>
+              <button id="mapButton" class="secondary" type="button">World Map</button>
+            </div>
+          </div>
+        </section>
 
         <div class="touch-controls" aria-hidden="true">
           <button data-hold="left">◀</button>

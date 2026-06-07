@@ -85,16 +85,87 @@ button.secondary:active { box-shadow: 0 2px 0 #357fa6; }
   padding: 5px 8px;
   font-size: .62rem;
   border-radius: 14px;
-  opacity: .62;
-  box-shadow: 0 2px 0 rgba(53, 127, 166, .72), 0 5px 10px rgba(0, 0, 0, .12);
+  opacity: .54;
+  box-shadow: 0 2px 0 rgba(53, 127, 166, .58), 0 5px 10px rgba(0, 0, 0, .10);
 }
+#menuButton,
 #heroButton {
-  min-width: 30px;
-  padding-inline: 0;
-  flex: 0 0 30px;
+  min-width: 58px;
+  padding-inline: 8px;
+  flex: 0 0 auto;
+}
+.game-wrap.end-mode #heroButton,
+.game-wrap.end-mode #soundButton,
+.game-wrap.end-mode #fullscreenButton {
+  display: none;
+}
+.game-wrap.end-mode #pauseButton {
+  margin-left: auto;
+  opacity: .82;
 }
 .game-wrap.map-mode .hud-button {
-  opacity: .52;
+  opacity: .48;
+}
+.menu-overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: linear-gradient(180deg, rgba(15, 27, 30, .30), rgba(15, 27, 30, .48));
+  z-index: 7;
+}
+.game-wrap.menu-mode .menu-overlay {
+  display: flex;
+}
+.menu-card {
+  width: min(100%, 560px);
+  padding: 24px 22px;
+  border-radius: 28px;
+  background: rgba(255, 248, 239, .92);
+  box-shadow: 0 24px 60px rgba(15, 27, 30, .24);
+  text-align: center;
+}
+.menu-card h1 {
+  margin: 6px 0 10px;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1;
+  color: #d83787;
+}
+.menu-kicker {
+  margin: 0;
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #7a3c65;
+}
+.menu-copy {
+  margin: 0 auto 18px;
+  max-width: 34ch;
+  font-size: 1rem;
+  color: #5a2e20;
+}
+.menu-heroes,
+.menu-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.menu-hero {
+  min-width: 130px;
+}
+.menu-hero.active {
+  background: #45cb9e;
+  box-shadow: 0 5px 0 #307f66, 0 10px 22px rgba(90, 46, 32, .18);
+}
+.menu-actions {
+  margin-top: 16px;
+}
+.menu-actions button {
+  min-width: 170px;
 }
 .touch-controls {
   position: absolute;
@@ -133,6 +204,25 @@ button.secondary:active { box-shadow: 0 2px 0 #357fa6; }
   opacity: .42;
   font-size: .8rem;
 }
+.game-wrap.end-mode .touch-controls button[data-hold="left"],
+.game-wrap.end-mode .touch-controls button[data-hold="right"],
+.game-wrap.menu-mode .touch-controls button[data-hold="left"],
+.game-wrap.menu-mode .touch-controls button[data-hold="right"] {
+  display: none;
+}
+.game-wrap.end-mode .touch-controls,
+.game-wrap.menu-mode .touch-controls {
+  justify-content: center;
+}
+.game-wrap.end-mode .touch-controls .jump,
+.game-wrap.menu-mode .touch-controls .jump {
+  width: 180px;
+  margin-left: 0;
+  opacity: .86;
+}
+.game-wrap.menu-mode .game-ui {
+  opacity: .9;
+}
 @media (hover: hover) and (pointer: fine) {
   .touch-controls { display: none; }
 }
@@ -150,10 +240,10 @@ button.secondary:active { box-shadow: 0 2px 0 #357fa6; }
     opacity: .9;
     box-shadow: 0 5px 0 #357fa6, 0 10px 22px rgba(90, 46, 32, .18);
   }
+  #menuButton,
   #heroButton {
-    min-width: 72px;
-    padding-inline: 10px;
-    flex: 0 0 auto;
+    min-width: 108px;
+    padding-inline: 12px;
   }
   .game-wrap.map-mode .hud-button {
     min-height: 34px;
@@ -181,10 +271,35 @@ button.secondary:active { box-shadow: 0 2px 0 #357fa6; }
   .touch-controls .jump {
     width: clamp(120px, 28vw, 148px);
   }
+  .game-wrap.end-mode .touch-controls button[data-hold="left"],
+  .game-wrap.end-mode .touch-controls button[data-hold="right"],
+  .game-wrap.menu-mode .touch-controls button[data-hold="left"],
+  .game-wrap.menu-mode .touch-controls button[data-hold="right"] {
+    display: block;
+  }
+  .game-wrap.end-mode .touch-controls,
+  .game-wrap.menu-mode .touch-controls {
+    justify-content: space-between;
+  }
+  .game-wrap.end-mode .touch-controls .jump,
+  .game-wrap.menu-mode .touch-controls .jump {
+    width: clamp(120px, 28vw, 148px);
+    margin-left: auto;
+  }
 }
 @media (max-width: 430px) {
   #fullscreenButton {
     display: none;
+  }
+  .menu-card {
+    padding: 18px 16px;
+    border-radius: 22px;
+  }
+  .menu-hero,
+  .menu-actions button,
+  #menuButton,
+  #heroButton {
+    min-width: 110px;
   }
 }
 @media (orientation: portrait) and (hover: none) and (pointer: coarse) {
