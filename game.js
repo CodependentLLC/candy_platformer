@@ -15,6 +15,18 @@
   const soundButton = document.getElementById('soundButton');
   const fullscreenButton = document.getElementById('fullscreenButton');
   const pauseButton = document.getElementById('pauseButton');
+  const hudLevelName = document.getElementById('hudLevelName');
+  const hudLevelValue = document.getElementById('hudLevelValue');
+  const hudCandyValue = document.getElementById('hudCandyValue');
+  const hudTotalValue = document.getElementById('hudTotalValue');
+  const hudHeartsValue = document.getElementById('hudHeartsValue');
+  const hudLivesValue = document.getElementById('hudLivesValue');
+  const hudTimeValue = document.getElementById('hudTimeValue');
+  const hudSpecialsValue = document.getElementById('hudSpecialsValue');
+  const hudSugarFill = document.getElementById('hudSugarFill');
+  const hudTipText = document.getElementById('hudTipText');
+  const hudLifeText = document.getElementById('hudLifeText');
+  const hudChapterText = document.getElementById('hudChapterText');
   const touch = { left: false, right: false };
   const keys = new Set();
 
@@ -27,6 +39,8 @@
   let WORLD_W = 2200;
   let totalCandy = 0;
   let nextExtraLifeAt = 45;
+  const levelTimeLimit = 60 * 60;
+  let levelTimer = levelTimeLimit;
   let soundOn = true;
   let audioCtx = null;
   let gameState = 'playing';
@@ -46,6 +60,7 @@
   let mapArrivalTimer = 0;
   const saveKey = 'candy-platformer-unlocked-level';
   const heroSaveKey = 'candy-platformer-selected-hero';
+  const specialSaveKey = 'candy-platformer-special-progress';
   let unlockedLevel = 0;
   let hasActiveRun = false;
   let menuReturnState = 'map';
@@ -110,6 +125,7 @@
     const wrap = canvas.parentElement.parentElement;
     const mapMode = gameState === 'map';
     const compact = isMobileCanvas();
+    wrap.classList.toggle('compact-ui', compact);
     wrap.classList.toggle('menu-mode', gameState === 'menu');
     wrap.classList.toggle('map-mode', mapMode);
     wrap.classList.toggle('play-mode', gameState === 'playing');
@@ -157,6 +173,22 @@
   function persistUnlockedLevel() {
     try {
       localStorage.setItem(saveKey, String(unlockedLevel));
+    } catch {}
+  }
+
+  function readSpecialProgress() {
+    const blank = LEVELS.map(level => Array((level.specials || []).length).fill(false));
+    try {
+      const raw = JSON.parse(localStorage.getItem(specialSaveKey) || 'null');
+      if (!Array.isArray(raw)) return blank;
+      return blank.map((row, levelIdx) => row.map((_, specialIdx) => !!(raw[levelIdx] && raw[levelIdx][specialIdx])));
+    } catch {}
+    return blank;
+  }
+
+  function persistSpecialProgress() {
+    try {
+      localStorage.setItem(specialSaveKey, JSON.stringify(specialProgress));
     } catch {}
   }
 
@@ -365,6 +397,7 @@
     };
   }
   function C(kind, x, y) { return [kind, x, y]; }
+  function S(kind, x, y) { return [kind, x, y]; }
   function D(x, y, img) { return { x, y, img }; }
 
   const LEVELS = [
@@ -373,7 +406,7 @@
       theme: 'meadow',
       chapter: 'Chapter 1 of 6',
       story: 'The child lands in a bright lollipop field where the path is wide, cheerful, and easy to read.',
-      tip: 'Easy start: wide platforms, bounce pads, and gentle lollipop lifts teach the basics.',
+      tip: 'Easy start: wide platforms, bounce pads, gentle lollipop lifts, and one hidden high trail teach the basics.',
       success: 'You crossed the meadow and found the first safe trail deeper into the candy world.',
       worldW: 2280,
       start: { x: 70, y: 392 },
@@ -381,9 +414,10 @@
       decor: [],
       platforms: [
         P(0, 452, 330, 80, 'icing'), P(250, 436, 300, 96, 'icing'), P(420, 392, 160, 22, 'cookie'),
-        V(640, 352, 150, 20, 320, 372, 0.55, 'float'), P(850, 352, 240, 20, 'cookie'), P(1130, 420, 220, 24, 'cookie'),
+        V(640, 352, 150, 20, 320, 372, 0.55, 'float'), P(740, 274, 110, 18, 'cookie'), P(860, 228, 110, 18, 'icing'),
+        P(850, 352, 240, 20, 'cookie'), P(1000, 262, 92, 18, 'cookie'), P(1130, 420, 220, 24, 'cookie'),
         B(1220, 402, 80), P(1370, 378, 130, 20, 'cookie'), P(1540, 338, 140, 20, 'cookie'),
-        P(1700, 420, 280, 90, 'icing'), P(1830, 290, 140, 18, 'cookie'), P(2020, 318, 120, 18, 'cookie'),
+        P(1700, 420, 280, 90, 'icing'), P(1830, 290, 140, 18, 'cookie'), P(1960, 238, 110, 18, 'icing'), P(2020, 318, 120, 18, 'cookie'),
         P(940, 300, 78, 18, 'break')
       ],
       candies: [
@@ -391,6 +425,7 @@
         C('bean_blue', 978, 308), C('bean_purple', 1010, 262), C('star_purple', 1175, 372), C('bean_yellow', 1255, 358), C('star_pink', 1410, 332),
         C('bean_red', 1560, 290), C('star_blue', 1760, 374), C('bean_green', 1880, 246), C('star_purple', 2050, 272), C('star_blue', 2120, 272)
       ],
+      specials: [S('star_pink', 796, 232), S('star_blue', 1048, 222), S('star_purple', 2015, 196)],
       enemies: [E(770, 320, 'gummy', 150), E(1320, 386, 'marsh', 120), E(1880, 254, 'gummy', 100)],
       checkpoints: [{ x: 1060, y: 344, active: false }, { x: 1765, y: 250, active: false }]
     },
@@ -399,16 +434,18 @@
       theme: 'licorice',
       chapter: 'Chapter 2 of 6',
       story: 'The lollipop field gives way to a pretzel road with twistier ledges and tighter footing.',
-      tip: 'The jumps are still forgiving, but tilted cookie planks ask for steadier timing and shorter landings.',
+      tip: 'The jumps are still forgiving, but tilted cookie planks and upper side paths ask for steadier timing.',
       success: 'You made it across Pretzel Path and kept your footing through the twists.',
       worldW: 2540,
       start: { x: 70, y: 390 },
       goal: { x: 2410, y: 275 },
       decor: [],
       platforms: [
-        P(0, 452, 290, 80, 'choco'), P(320, 412, 165, 22, 'cookie'), P(540, 372, 145, 20, 'tilt'), P(730, 332, 135, 20, 'choco'),
-        M(910, 320, 128, 22, 910, 1090, 1.2), P(1145, 392, 155, 20, 'cookie'), B(1320, 392, 80), P(1450, 350, 150, 20, 'choco'),
-        M(1660, 300, 128, 22, 1660, 1860, 1.25), P(1910, 422, 180, 22, 'cookie'), P(2140, 376, 150, 20, 'cookie'),
+        P(0, 452, 290, 80, 'choco'), P(320, 412, 165, 22, 'cookie'), P(540, 372, 145, 20, 'tilt'), P(610, 284, 110, 18, 'wafer'),
+        P(730, 332, 135, 20, 'choco'), P(780, 232, 110, 18, 'cookie'), M(910, 320, 128, 22, 910, 1090, 1.2),
+        P(1145, 392, 155, 20, 'cookie'), B(1320, 392, 80), P(1450, 350, 150, 20, 'choco'),
+        P(1605, 248, 110, 18, 'wafer'), M(1660, 300, 128, 22, 1660, 1860, 1.25), P(1768, 206, 100, 18, 'cookie'),
+        P(1910, 422, 180, 22, 'cookie'), P(2140, 376, 150, 20, 'cookie'), P(2230, 252, 110, 18, 'choco'),
         P(2310, 330, 150, 20, 'choco'), P(2390, 420, 170, 80, 'icing'), P(1210, 300, 78, 18, 'break'), P(2000, 330, 82, 18, 'break')
       ],
       candies: [
@@ -416,6 +453,7 @@
         C('bean_red', 1015, 278), C('star_pink', 1218, 258), C('bean_blue', 1188, 348), C('star_blue', 1360, 348), C('bean_purple', 1510, 308),
         C('star_pink', 1710, 256), C('bean_green', 1770, 256), C('star_purple', 1980, 384), C('bean_orange', 2190, 334), C('star_blue', 2350, 284)
       ],
+      specials: [S('star_purple', 665, 242), S('star_blue', 828, 188), S('star_pink', 1818, 162)],
       enemies: [E(390, 378, 'beetle', 110), E(760, 290, 'gummy', 120), E(1490, 316, 'marsh', 120), E(2200, 342, 'jaw', 100)],
       checkpoints: [{ x: 1165, y: 336, active: false }, { x: 2040, y: 366, active: false }]
     },
@@ -424,7 +462,7 @@
       theme: 'falls',
       chapter: 'Chapter 3 of 6',
       story: 'Cold cream cliffs and dripping frosting make the route feel taller, slicker, and more vertical.',
-      tip: 'Use the safer icing shelves, then ride the slick frosting slides when the path narrows.',
+      tip: 'Use the safer icing shelves, then ride the slick frosting slides and side ledges to reach hidden treats.',
       success: 'You climbed past the cold cream ledges and cleared the falls.',
       worldW: 2840,
       start: { x: 70, y: 390 },
@@ -433,7 +471,9 @@
       platforms: [
         P(0, 452, 280, 80, 'icing'), P(320, 408, 155, 22, 'choco'), P(520, 365, 160, 20, 'cookie'), B(730, 395, 80),
         P(860, 430, 170, 22, 'icing'), M(1100, 368, 130, 22, 1100, 1270, 1.15), P(1320, 330, 150, 20, 'slide', { slideDir: 0.26 }),
-        P(1540, 392, 180, 22, 'icing'), B(1775, 392, 82), P(1930, 350, 160, 20, 'cookie'), M(2175, 300, 132, 22, 2175, 2365, 1.3),
+        P(1448, 246, 108, 18, 'icing'), P(1598, 210, 102, 18, 'icing'),
+        P(1540, 392, 180, 22, 'icing'), B(1775, 392, 82), P(1930, 350, 160, 20, 'cookie'), P(2060, 238, 100, 18, 'icing'),
+        M(2175, 300, 132, 22, 2175, 2365, 1.3), P(2295, 206, 100, 18, 'icing'),
         P(2410, 256, 120, 20, 'icing'), P(2570, 306, 120, 20, 'icing'), P(2650, 420, 220, 84, 'icing'), P(1460, 286, 82, 18, 'break'), P(2050, 304, 82, 18, 'break')
       ],
       candies: [
@@ -441,6 +481,7 @@
         C('star_purple', 1138, 320), C('bean_red', 1385, 286), C('star_blue', 1605, 344), C('bean_yellow', 1798, 350), C('star_pink', 1990, 308),
         C('bean_orange', 2235, 258), C('star_purple', 2465, 214), C('bean_green', 2620, 264), C('star_blue', 2740, 264)
       ],
+      specials: [S('star_blue', 1498, 204), S('star_purple', 1650, 166), S('star_pink', 2346, 164)],
       enemies: [E(350, 374, 'gummy', 120), E(612, 330, 'marsh', 110), E(1600, 356, 'beetle', 150), E(2460, 220, 'jaw', 90), E(2600, 270, 'gummy', 90)],
       checkpoints: [{ x: 1180, y: 350, active: false }, { x: 2280, y: 282, active: false }]
     },
@@ -449,7 +490,7 @@
       theme: 'woods',
       chapter: 'Chapter 4 of 6',
       story: 'Tall waffle stacks lean over the trail, turning the forest into a maze of crisp platforms and syrupy gaps.',
-      tip: 'Read the lanes before you jump. Syrup pads slow you down, so keep your rhythm instead of rushing.',
+      tip: 'Read the lanes before you jump. Syrup pads slow you down, and the upper waffle stacks hide extra routes.',
       success: 'You found the right rhythm and made it through Waffle Woods.',
       worldW: 3080,
       start: { x: 70, y: 390 },
@@ -457,9 +498,10 @@
       decor: [],
       platforms: [
         P(0, 452, 280, 80, 'wafer'), P(320, 414, 150, 22, 'cookie'), P(520, 378, 130, 20, 'choco'), P(700, 338, 130, 20, 'cookie'),
-        M(900, 310, 130, 22, 900, 1070, 1.15), P(1100, 388, 160, 22, 'choco'), P(1325, 348, 150, 20, 'cookie'), B(1510, 392, 82),
-        P(1660, 338, 145, 20, 'syrup'), M(1870, 284, 128, 22, 1870, 2040, 1.2), P(2090, 420, 190, 22, 'cookie'),
-        P(2320, 372, 150, 20, 'cookie'), B(2525, 372, 80), P(2660, 316, 130, 20, 'choco'), P(2830, 272, 125, 20, 'cookie'), P(2900, 420, 180, 82, 'icing'),
+        M(900, 310, 130, 22, 900, 1070, 1.15), P(1100, 388, 160, 22, 'choco'), P(1180, 258, 110, 18, 'wafer'), P(1325, 348, 150, 20, 'cookie'),
+        P(1336, 214, 108, 18, 'wafer'), B(1510, 392, 82), P(1660, 338, 145, 20, 'syrup'), M(1870, 284, 128, 22, 1870, 2040, 1.2),
+        P(2090, 420, 190, 22, 'cookie'), P(2320, 372, 150, 20, 'cookie'), B(2525, 372, 80), P(2485, 250, 104, 18, 'wafer'),
+        P(2660, 316, 130, 20, 'choco'), P(2830, 272, 125, 20, 'cookie'), P(2900, 420, 180, 82, 'icing'),
         P(1215, 306, 82, 18, 'break'), P(2170, 328, 82, 18, 'break'), P(2725, 262, 82, 18, 'break')
       ],
       candies: [
@@ -467,6 +509,7 @@
         C('star_purple', 950, 260), C('bean_blue', 1165, 340), C('star_blue', 1380, 300), C('bean_purple', 1532, 348), C('star_pink', 1705, 292),
         C('bean_yellow', 1935, 236), C('star_purple', 2150, 384), C('bean_orange', 2365, 328), C('star_blue', 2550, 330), C('bean_green', 2700, 274), C('star_pink', 2890, 232)
       ],
+      specials: [S('star_blue', 1232, 216), S('star_purple', 1388, 172), S('star_pink', 2536, 208)],
       enemies: [E(382, 380, 'marsh', 110), E(722, 294, 'beetle', 110), E(1390, 314, 'gummy', 120), E(1730, 294, 'jaw', 120), E(2370, 338, 'beetle', 120), E(2860, 238, 'jaw', 90)],
       checkpoints: [{ x: 1265, y: 328, active: false }, { x: 1825, y: 262, active: false }, { x: 2240, y: 352, active: false }]
     },
@@ -475,7 +518,7 @@
       theme: 'courtyard',
       chapter: 'Chapter 5 of 6',
       story: 'Layered cake towers and frosting ledges surround the courtyard, with sugar barriers blocking the cleanest route.',
-      tip: 'This stage mixes cake-like stacks, lifts, gates, and tighter lanes. Save Sugar Rush for the places that matter.',
+      tip: 'This stage mixes cake stacks, lifts, gates, and tighter lanes. The best treats hide on the side shelves, not the center line.',
       success: 'You broke through the courtyard routes and opened the way forward.',
       worldW: 3360,
       start: { x: 70, y: 390 },
@@ -484,8 +527,9 @@
       platforms: [
         P(0, 452, 300, 80, 'icing'), P(350, 418, 165, 22, 'cookie'), P(560, 372, 140, 20, 'choco'), P(760, 330, 145, 20, 'cookie'),
         P(950, 406, 180, 22, 'icing'), B(1160, 392, 80), P(1290, 348, 150, 20, 'cookie'), G(1510, 296, 84, 90),
-        V(1588, 326, 96, 18, 286, 338, 0.72, 'elevator'), M(1680, 308, 132, 22, 1680, 1815, 1.02), P(1895, 246, 150, 20, 'cookie'), P(2120, 390, 190, 22, 'choco'), B(2345, 376, 82),
-        P(2490, 330, 140, 20, 'icing'), G(2700, 274, 82, 88), P(2768, 300, 92, 18, 'icing'), M(2868, 286, 120, 22, 2868, 3005, 1.05), P(3060, 232, 140, 20, 'cookie'),
+        V(1588, 326, 96, 18, 286, 338, 0.72, 'elevator'), M(1680, 308, 132, 22, 1680, 1815, 1.02), P(1762, 204, 106, 18, 'icing'), P(1895, 246, 150, 20, 'cookie'),
+        P(1965, 168, 100, 18, 'cookie'), P(2120, 390, 190, 22, 'choco'), B(2345, 376, 82), P(2490, 330, 140, 20, 'icing'),
+        P(2574, 236, 96, 18, 'icing'), G(2700, 274, 82, 88), P(2768, 300, 92, 18, 'icing'), M(2868, 286, 120, 22, 2868, 3005, 1.05), P(3060, 232, 140, 20, 'cookie'),
         P(3185, 420, 190, 80, 'icing'), P(1030, 306, 82, 18, 'break'), P(2240, 320, 82, 18, 'break')
       ],
       candies: [
@@ -493,6 +537,7 @@
         C('star_pink', 1000, 358), C('bean_red', 1178, 348), C('star_blue', 1360, 300), C('bean_yellow', 1580, 240), C('star_purple', 1725, 250),
         C('bean_orange', 1940, 198), C('star_blue', 2180, 344), C('bean_green', 2365, 330), C('star_pink', 2565, 284), C('bean_blue', 2725, 206), C('star_purple', 2898, 232), C('star_blue', 3138, 184)
       ],
+      specials: [S('star_pink', 1632, 240), S('star_blue', 1814, 160), S('star_purple', 2620, 194)],
       enemies: [E(430, 384, 'gummy', 100), E(812, 286, 'beetle', 90), E(1360, 314, 'marsh', 90), E(1990, 202, 'jaw', 72), E(2180, 354, 'beetle', 100), E(3100, 188, 'jaw', 70)],
       checkpoints: [{ x: 1410, y: 320, active: false }, { x: 2470, y: 304, active: false }, { x: 2890, y: 266, active: false }, { x: 3120, y: 206, active: false }]
     },
@@ -501,7 +546,7 @@
       theme: 'keep',
       chapter: 'Chapter 6 of 6',
       story: 'High above the candy roofs, the child finally sees the return door beyond the kingdom gate.',
-      tip: 'Finale: the path is denser and higher, with blinking gates that reward patience over panic.',
+      tip: 'Finale: the path is denser and higher, with blinking gates and a few side ledges for players who explore calmly.',
       success: 'You cleared the kingdom heights and reached the way home.',
       worldW: 3600,
       start: { x: 70, y: 390 },
@@ -510,9 +555,11 @@
       platforms: [
         P(0, 452, 290, 80, 'choco'), P(340, 416, 165, 22, 'cookie'), P(555, 370, 135, 20, 'choco'), P(740, 330, 145, 20, 'choco'),
         B(950, 392, 82), P(1100, 350, 150, 20, 'cookie'), TG(1320, 274, 92, 110, 0), P(1470, 236, 140, 20, 'cookie'),
-        M(1680, 286, 132, 22, 1680, 1860, 1.2), P(1910, 414, 180, 22, 'cookie'), P(2140, 370, 145, 20, 'choco'), B(2320, 360, 82),
-        TG(2470, 250, 92, 110, 60), P(2630, 212, 140, 20, 'cookie'), M(2840, 248, 132, 22, 2840, 3025, 1.24), P(3075, 318, 150, 20, 'choco'),
-        TG(3250, 200, 90, 110, 120), P(3370, 176, 115, 20, 'cookie'), P(3420, 420, 180, 84, 'icing'), P(1180, 306, 82, 18, 'break'), P(2030, 330, 82, 18, 'break'), P(2950, 282, 82, 18, 'break')
+        P(1622, 188, 106, 18, 'cookie'), M(1680, 286, 132, 22, 1680, 1860, 1.2), P(1910, 414, 180, 22, 'cookie'),
+        P(2140, 370, 145, 20, 'choco'), B(2320, 360, 82), TG(2470, 250, 92, 110, 60), P(2630, 212, 140, 20, 'cookie'),
+        P(2780, 170, 104, 18, 'choco'), M(2840, 248, 132, 22, 2840, 3025, 1.24), P(3075, 318, 150, 20, 'choco'),
+        TG(3250, 200, 90, 110, 120), P(3332, 138, 102, 18, 'cookie'), P(3370, 176, 190, 20, 'icing'), P(3420, 420, 180, 84, 'icing'),
+        P(1180, 306, 82, 18, 'break'), P(2030, 330, 82, 18, 'break'), P(2950, 282, 82, 18, 'break')
       ],
       candies: [
         C('star_blue', 150, 406), C('bean_red', 390, 382), C('bean_orange', 470, 382), C('star_purple', 600, 328), C('bean_green', 800, 282),
@@ -520,6 +567,7 @@
         C('bean_yellow', 1950, 384), C('star_purple', 2200, 326), C('bean_orange', 2330, 314), C('star_blue', 2495, 208), C('bean_green', 2660, 164),
         C('star_pink', 2888, 196), C('bean_red', 3125, 274), C('star_purple', 3295, 148), C('star_blue', 3445, 120)
       ],
+      specials: [S('star_blue', 1674, 144), S('star_pink', 2832, 126), S('star_purple', 3380, 96)],
       enemies: [E(420, 384, 'marsh', 100), E(782, 294, 'beetle', 110), E(1180, 314, 'gummy', 110), E(1540, 194, 'jaw', 90), E(1985, 378, 'beetle', 110), E(2195, 334, 'marsh', 110), E(2675, 170, 'jaw', 90), E(3120, 282, 'beetle', 120)],
       checkpoints: [{ x: 1440, y: 310, active: false }, { x: 2550, y: 286, active: false }, { x: 3330, y: 170, active: false }]
     }
@@ -547,6 +595,7 @@
   let level = null;
   let platforms = [];
   let candies = [];
+  let specials = [];
   let enemies = [];
   let checkpoints = [];
   let goal = {x:0, y:0, w:38, h:90};
@@ -556,6 +605,50 @@
   let particles = [];
   let levelIntroTimer = 0;
   let lives = maxLives;
+  let specialProgress = [];
+
+  function levelSpecialCount(i) {
+    return (LEVELS[i] && LEVELS[i].specials ? LEVELS[i].specials.length : 0);
+  }
+
+  function collectedSpecialCount(i) {
+    const row = specialProgress[i] || [];
+    let count = 0;
+    for (const taken of row) if (taken) count++;
+    return count;
+  }
+
+  function formatLevelTimer(frames) {
+    const totalSeconds = Math.max(0, Math.ceil(frames / 60));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  }
+
+  function collectSpecial(special) {
+    if (!specialProgress[levelIndex]) specialProgress[levelIndex] = Array(levelSpecialCount(levelIndex)).fill(false);
+    if (!specialProgress[levelIndex][special.index]) {
+      specialProgress[levelIndex][special.index] = true;
+      persistSpecialProgress();
+    }
+    special.taken = true;
+    score += 5;
+    sugar += 20;
+    if (sugar >= 100) {
+      sugar = 0;
+      sugarTimer = 380;
+      burst(player.x + player.w / 2, player.y, 30, '#fff27a');
+      sound('sugar');
+    }
+    burst(special.x, special.y, 18, '#fff27a');
+    sound('checkpoint');
+    while (totalCandy + score >= nextExtraLifeAt) {
+      lives = Math.min(maxLives + 4, lives + 1);
+      nextExtraLifeAt += 45;
+      burst(player.x + player.w / 2, player.y, 18, '#fff27a');
+      sound('life');
+    }
+  }
 
   const WORLD_MAP_NODES = [
     { x: 118, y: 318, mobileX: 116, mobileY: 342, color: '#ff8fc8', icon: 'lollipop_pink', badge: 'bean_red', plate: '#fff0f7', label: 'Meadow', stamp: 'star_pink', labelDy: 42, mobileLabelDy: 38 },
@@ -736,6 +829,11 @@
       respawnTimer: 0
     }));
     candies = level.candies.map(([kind, x, y]) => ({ kind, x, y, taken: false, bob: Math.random() * Math.PI * 2 }));
+    specials = (level.specials || []).map(([kind, x, y], index) => ({
+      kind, x, y, index,
+      taken: !!(specialProgress[i] && specialProgress[i][index]),
+      bob: Math.random() * Math.PI * 2
+    }));
     enemies = level.enemies.map(e => ({ ...e, x: e.spawnX, y: e.spawnY, vx: e.baseSpeed, alive: true, hurtTimer: 0, respawnTimer: 0 }));
     checkpoints = level.checkpoints.map(c => ({ ...c }));
     goal = { ...level.goal, w: 48, h: 102 };
@@ -750,6 +848,7 @@
     score = 0;
     sugar = 0;
     sugarTimer = 0;
+    levelTimer = levelTimeLimit;
     particles.length = 0;
     winTimer = 0;
     shake = 0;
@@ -857,6 +956,12 @@
           sound('ending');
         }
       }
+      return;
+    }
+
+    levelTimer = Math.max(0, levelTimer - 1);
+    if (levelTimer === 0) {
+      loseLife('time');
       return;
     }
 
@@ -1082,6 +1187,13 @@
       }
     }
 
+    for (const special of specials) {
+      if (special.taken) continue;
+      special.bob += 0.06;
+      const hit = { x: special.x - 18, y: special.y + Math.sin(special.bob) * 6 - 18, w: 36, h: 36 };
+      if (rectsOverlap(player, hit)) collectSpecial(special);
+    }
+
     for (const cp of checkpoints) {
       const pad = { x: cp.x, y: cp.y, w: 46, h: 46 };
       if (!cp.active && rectsOverlap(player, pad)) {
@@ -1150,6 +1262,7 @@
   }
 
   function respawn() {
+    levelTimer = levelTimeLimit;
     player.x = player.lastSafe.x;
     player.y = player.lastSafe.y;
     player.vx = 0;
@@ -1201,6 +1314,7 @@
     drawCheckpoints();
     drawGoal();
     drawCandies();
+    drawSpecials();
     drawEnemies();
     drawPlayer();
     drawParticles();
@@ -1313,6 +1427,21 @@
     }
   }
 
+  function drawSpecials() {
+    for (const special of specials) {
+      if (special.taken) continue;
+      const bob = Math.sin(special.bob) * 6;
+      ctx.save();
+      ctx.globalAlpha = 0.24 + Math.sin(time * 0.12 + special.index) * 0.08;
+      ctx.fillStyle = '#fff6c8';
+      ctx.beginPath();
+      ctx.arc(special.x, special.y + bob, 18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      drawImageCentered(assets[special.kind], special.x, special.y + bob, 34);
+    }
+  }
+
   function drawEnemies() {
     for (const e of enemies) {
       const frames = ENEMY_FRAMES[e.kind];
@@ -1398,52 +1527,33 @@
 
   function isMobileCanvas() {
     const coarse = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-    return coarse || Math.min(window.innerWidth, window.innerHeight) < 760;
+    const stage = canvas.parentElement;
+    const rect = stage ? stage.getBoundingClientRect() : { width: window.innerWidth, height: window.innerHeight };
+    return coarse || rect.width < 1180 || rect.height < 620 || Math.min(window.innerWidth, window.innerHeight) < 760;
+  }
+
+  function updateDomHud() {
+    if (!level) return;
+    const showHud = gameState === 'playing';
+    const levelSpecialTotal = levelSpecialCount(levelIndex);
+    const levelSpecialFound = collectedSpecialCount(levelIndex);
+    hudLevelName.textContent = level.name;
+    hudLevelValue.textContent = `${levelIndex + 1}/${LEVELS.length}`;
+    hudCandyValue.textContent = String(score);
+    hudTotalValue.textContent = String(totalCandy + score);
+    hudHeartsValue.textContent = `${Math.max(0, player.hearts)}/${maxHearts}`;
+    hudLivesValue.textContent = String(lives);
+    hudTimeValue.textContent = formatLevelTimer(levelTimer);
+    hudSpecialsValue.textContent = `${levelSpecialFound}/${levelSpecialTotal}`;
+    hudTipText.textContent = level.tip;
+    hudLifeText.textContent = `Next extra life at ${nextExtraLifeAt} total candy`;
+    hudChapterText.textContent = level.chapter;
+    hudSugarFill.style.width = `${Math.max(0, Math.min(100, sugarTimer > 0 ? 100 : sugar))}%`;
+    canvas.parentElement.classList.toggle('hud-hidden', !showHud);
   }
 
   function drawHUD() {
-    const compact = isMobileCanvas();
-    if (gameState === 'map') return;
-    if (compact) {
-      roundRect(12, 12, 158, 36, 14, 'rgba(255,255,255,.72)');
-      ctx.fillStyle = '#5a2e20';
-      ctx.font = '900 11px system-ui';
-      ctx.fillText(`H ${Math.max(0, player.hearts)}  L ${lives}  C ${score}`, 24, 34);
-      roundRect(W - 100, 12, 88, 24, 12, 'rgba(255,255,255,.66)');
-      ctx.fillStyle = '#d83787';
-      ctx.font = '900 10px system-ui';
-      ctx.fillText('Sugar', W - 90, 28);
-      roundRect(W - 48, 19, 28, 8, 4, 'rgba(90,46,32,.14)');
-      const compactMeter = sugarTimer > 0 ? 1 : sugar / 100;
-      roundRect(W - 48, 19, 28 * compactMeter, 8, 4, sugarTimer > 0 ? '#fff27a' : '#ff74ba');
-      return;
-    }
-
-    roundRect(12, 12, 275, 74, 18, 'rgba(255,255,255,.90)');
-    ctx.fillStyle = '#5a2e20';
-    ctx.font = '900 20px system-ui';
-    const levelTitle = level ? level.name : 'Candy Quest Kids';
-    ctx.fillText(levelTitle, 24, 38);
-    ctx.font = '800 15px system-ui';
-    ctx.fillText(`Level ${levelIndex + 1}/${LEVELS.length} · Candy ${score} · Total ${totalCandy + score}`, 24, 59);
-    ctx.fillText(`Hearts ${Math.max(0, player.hearts)}/${maxHearts} · Lives ${lives}`, 24, 78);
-
-    roundRect(310, 12, 270, 56, 18, 'rgba(255,255,255,.85)');
-    ctx.fillStyle = '#5a2e20';
-    ctx.font = '900 16px system-ui';
-    ctx.fillText('Sugar Rush', 326, 37);
-    roundRect(326, 44, 224, 14, 7, 'rgba(90,46,32,.16)');
-    const meter = sugarTimer > 0 ? 1 : sugar / 100;
-    roundRect(326, 44, 224 * meter, 14, 7, sugarTimer > 0 ? '#fff27a' : '#ff74ba');
-
-    roundRect(598, 14, 346, 74, 18, 'rgba(255,255,255,.84)');
-    ctx.fillStyle = '#d83787';
-    ctx.font = '900 15px system-ui';
-    ctx.fillText(level ? level.tip : 'Choose a hero to begin.', 616, 38);
-    ctx.fillStyle = '#5a2e20';
-    ctx.font = '800 14px system-ui';
-    ctx.fillText(`Next extra life at ${nextExtraLifeAt} total candy`, 616, 61);
-    ctx.fillText(level ? level.chapter : 'Campaign', 616, 80);
+    updateDomHud();
   }
 
   function drawStoryBanner() {
@@ -1523,6 +1633,9 @@
       const unlocked = index <= unlockedLevel;
       const completed = index < unlockedLevel;
       const isNext = index === mapLevelIndex;
+      const specialTotal = levelSpecialCount(index);
+      const specialFound = collectedSpecialCount(index);
+      const allSpecials = specialTotal > 0 && specialFound === specialTotal;
       const plateFill = unlocked ? node.plate : 'rgba(240,234,238,.76)';
       const ringFill = unlocked ? node.color : '#d8c8d0';
       const plateW = compact ? 56 : 62;
@@ -1559,10 +1672,34 @@
         ctx.stroke();
       }
 
+      const badgeStep = compact ? 11 : 13;
+      const badgeY = pos.y + pos.labelDy - (compact ? 9 : 10);
+      for (let badgeIndex = 0; badgeIndex < specialTotal; badgeIndex++) {
+        const badgeX = pos.x + (badgeIndex - (specialTotal - 1) / 2) * badgeStep;
+        if (badgeIndex < specialFound) {
+          drawImageCentered(assets[node.stamp], badgeX, badgeY, compact ? 8 : 10);
+        } else {
+          ctx.save();
+          ctx.globalAlpha = 0.28;
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(badgeX, badgeY, compact ? 4 : 5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
       roundRect(pos.x - (compact ? 26 : 28), pos.y + pos.labelDy, compact ? 52 : 58, 15, 8, 'rgba(255,248,239,.72)', 'rgba(90,46,32,.10)');
       ctx.fillStyle = '#5a2e20';
       ctx.font = compact ? '800 9px system-ui' : '800 10px system-ui';
       ctx.fillText(node.label, pos.x, pos.y + pos.labelDy + 11);
+
+      if (allSpecials) {
+        roundRect(pos.x - (compact ? 18 : 20), pos.y + pos.labelDy + (compact ? 18 : 20), compact ? 36 : 40, compact ? 11 : 12, 6, 'rgba(255,255,255,.86)', 'rgba(255,242,122,.28)');
+        ctx.fillStyle = '#d83787';
+        ctx.font = compact ? '900 7px system-ui' : '900 8px system-ui';
+        ctx.fillText('BONUS', pos.x, pos.y + pos.labelDy + (compact ? 26 : 29));
+      }
     });
 
     const markerFrom = nodeLayout[mapMarkerFromIndex];
@@ -1587,10 +1724,12 @@
     }
 
     if (compact) {
-      roundRect(18, H - 42, 140, 22, 11, 'rgba(255,248,239,.62)', '#ffffff');
+      roundRect(18, H - 50, 172, 30, 12, 'rgba(255,248,239,.62)', '#ffffff');
       ctx.fillStyle = '#5a2e20';
       ctx.font = '800 10px system-ui';
-      ctx.fillText(LEVELS[mapLevelIndex].name, 88, H - 27);
+      ctx.fillText(LEVELS[mapLevelIndex].name, 104, H - 34);
+      ctx.font = '800 9px system-ui';
+      ctx.fillText(`Specials ${collectedSpecialCount(mapLevelIndex)}/${levelSpecialCount(mapLevelIndex)}`, 104, H - 22);
     }
 
     if (mapRevealTimer > 0) {
@@ -1613,9 +1752,10 @@
       ctx.fillText(levelIndex < LEVELS.length - 1 ? 'Chapter Clear!' : 'The Way Home Is Open!', W / 2, H - 126);
       ctx.fillStyle = '#5a2e20';
       ctx.font = '800 14px system-ui';
-      ctx.fillText(levelIndex < LEVELS.length - 1 ? level.success : 'Hold steady. The final scene is next.', W / 2, H - 96, 700);
+      ctx.fillText(levelIndex < LEVELS.length - 1 ? level.success : 'Hold steady. The final scene is next.', W / 2, H - 102, 700);
       ctx.font = '700 12px system-ui';
-      ctx.fillText('Tap Go to continue.', W / 2, H - 70);
+      ctx.fillText(`Specials found ${collectedSpecialCount(levelIndex)}/${levelSpecialCount(levelIndex)}`, W / 2, H - 80);
+      ctx.fillText('Tap Go to continue.', W / 2, H - 62);
       ctx.textAlign = 'start';
       return;
     }
@@ -1630,7 +1770,8 @@
       ctx.fillText(`You cleared ${level.name}.`, W / 2, compact ? 240 : 258);
       ctx.font = compact ? '700 17px system-ui' : '700 18px system-ui';
       ctx.fillText(level.success, W / 2, compact ? 286 : 304, compact ? 700 : 520);
-      ctx.fillText('The next candy trail is opening...', W / 2, compact ? 320 : 334);
+      ctx.fillText(`Specials found ${collectedSpecialCount(levelIndex)}/${levelSpecialCount(levelIndex)}`, W / 2, compact ? 320 : 334);
+      ctx.fillText('The next candy trail is opening...', W / 2, compact ? 350 : 362);
     } else {
       ctx.fillText('The Way Home Is Open!', W / 2, compact ? 196 : 214);
       ctx.fillStyle = '#5a2e20';
@@ -1793,6 +1934,7 @@
 
   unlockedLevel = readUnlockedLevel();
   selectedHero = readSelectedHero();
+  specialProgress = readSpecialProgress();
   updateHeroButton();
   updateFullscreenButton();
   updatePauseButton();

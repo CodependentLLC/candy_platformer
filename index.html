@@ -13,12 +13,37 @@
       <div class="game-stage">
         <canvas id="gameCanvas" width="960" height="540" aria-label="Candy Quest Kids game canvas"></canvas>
 
-        <div class="game-ui" aria-label="Game controls">
-          <button id="menuButton" class="hud-button secondary" type="button">Menu</button>
-          <button id="heroButton" class="hud-button portrait-toggle secondary" type="button">Boy</button>
-          <button id="pauseButton" class="hud-button secondary" type="button">Play</button>
-          <button id="soundButton" class="hud-button secondary" type="button">Sound On</button>
-          <button id="fullscreenButton" class="hud-button secondary" type="button">Fullscreen</button>
+        <div class="game-ui" aria-label="Game interface">
+          <div class="top-left-hud hud-panel" id="statsHud" aria-live="polite">
+            <h2 class="hud-title" id="hudLevelName">Candy Quest Kids</h2>
+            <div class="stats-grid">
+              <div class="stat"><span class="stat-label">Level</span><span class="stat-value" id="hudLevelValue">1/6</span></div>
+              <div class="stat"><span class="stat-label">Candy</span><span class="stat-value" id="hudCandyValue">0</span></div>
+              <div class="stat"><span class="stat-label">Total</span><span class="stat-value" id="hudTotalValue">0</span></div>
+              <div class="stat"><span class="stat-label">Hearts</span><span class="stat-value" id="hudHeartsValue">3/3</span></div>
+              <div class="stat"><span class="stat-label">Lives</span><span class="stat-value" id="hudLivesValue">5</span></div>
+              <div class="stat"><span class="stat-label">Time</span><span class="stat-value" id="hudTimeValue">1:00</span></div>
+              <div class="stat"><span class="stat-label">Specials</span><span class="stat-value" id="hudSpecialsValue">0/3</span></div>
+            </div>
+          </div>
+
+          <div class="sugar-rush-hud hud-panel" id="sugarHud" aria-live="polite">
+            <h2 class="sugar-title">Sugar Rush</h2>
+            <div class="sugar-bar"><div class="sugar-fill" id="hudSugarFill"></div></div>
+          </div>
+
+          <div class="top-buttons" aria-label="Game controls">
+            <button id="menuButton" class="hud-button secondary" type="button">Menu</button>
+            <button id="heroButton" class="hud-button portrait-toggle secondary" type="button">Boy</button>
+            <button id="pauseButton" class="hud-button secondary" type="button">Play</button>
+            <button id="soundButton" class="hud-button secondary" type="button">Sound On</button>
+            <button id="fullscreenButton" class="hud-button secondary" type="button">Fullscreen</button>
+          </div>
+
+          <div class="top-right-hud legend-panel hud-panel" id="legendHud" aria-live="polite">
+            <p class="legend-small" id="hudTipText">Choose a hero to begin.</p>
+            <p class="legend-main"><span id="hudLifeText">Next extra life at 45 total candy</span><br /><span id="hudChapterText">Campaign</span></p>
+          </div>
         </div>
 
         <section id="menuOverlay" class="menu-overlay" aria-label="Main menu">
