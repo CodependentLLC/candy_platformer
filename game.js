@@ -16,11 +16,8 @@
   const menuGirlButton = document.getElementById('menuGirlButton');
   const menuHeroView = document.getElementById('menuHeroView');
   const menuActionView = document.getElementById('menuActionView');
-  const menuWorldView = document.getElementById('menuWorldView');
   const menuSelectedHeroText = document.getElementById('menuSelectedHeroText');
-  const worldCardList = document.getElementById('worldCardList');
   const backToHeroButton = document.getElementById('backToHeroButton');
-  const backToActionsButton = document.getElementById('backToActionsButton');
   const soundButton = document.getElementById('soundButton');
   const fullscreenButton = document.getElementById('fullscreenButton');
   const pauseButton = document.getElementById('pauseButton');
@@ -78,10 +75,7 @@
   const specialSaveKey = 'candy-platformer-special-progress';
   const rewardSaveKey = 'candy-platformer-reward-progress';
   const medalSaveKey = 'candy-platformer-medal-progress';
-  const worldSaveKey = 'candy-platformer-unlocked-world';
   let unlockedLevel = 0;
-  let unlockedWorldIndex = 0;
-  let currentWorldIndex = 0;
   let hasActiveRun = false;
   let menuReturnState = 'map';
   let menuStep = 'hero';
@@ -148,38 +142,12 @@
     resumeButton.disabled = !resumable;
   }
 
-  function renderWorldCards() {
-    worldCardList.innerHTML = WORLDS.map((world, index) => {
-      const unlocked = index <= unlockedWorldIndex;
-      const cardClass = unlocked ? 'world-card' : 'world-card locked';
-      const difficulty = `World ${index + 1} · Difficulty ${world.difficulty}`;
-      const actionLabel = !unlocked ? 'Locked' : world.playable ? 'Open World Map' : 'Coming Soon';
-      const disabled = !unlocked || !world.playable ? 'disabled' : '';
-      const data = unlocked && world.playable ? `data-world-index="${index}"` : '';
-      return `
-        <article class="${cardClass}">
-          <h3>${world.name}</h3>
-          <p class="world-meta">${difficulty}</p>
-          <p class="world-copy">${world.copy}</p>
-          <p class="world-gate">Final gate: ${world.finalGate}</p>
-          <p class="world-gate">Core mechanics: ${world.mechanics}</p>
-          <button class="secondary" type="button" ${disabled} ${data}>${actionLabel}</button>
-        </article>
-      `;
-    }).join('');
-  }
-
   function updateMenuStep() {
     const heroScreen = menuStep === 'hero';
-    const actionScreen = menuStep === 'actions';
-    const worldScreen = menuStep === 'worlds';
     menuHeroView.hidden = !heroScreen;
-    menuActionView.hidden = !actionScreen;
-    menuWorldView.hidden = !worldScreen;
+    menuActionView.hidden = heroScreen;
     menuOverlay.classList.toggle('menu-hero-step', heroScreen);
-    menuOverlay.classList.toggle('menu-action-step', actionScreen);
-    menuOverlay.classList.toggle('menu-world-step', worldScreen);
-    if (worldScreen) renderWorldCards();
+    menuOverlay.classList.toggle('menu-action-step', !heroScreen);
   }
 
   function updateUiMode() {
@@ -226,15 +194,6 @@
     return 'boy';
   }
 
-  function readUnlockedWorldIndex() {
-    try {
-      const raw = localStorage.getItem(worldSaveKey);
-      const parsed = Number(raw);
-      if (Number.isInteger(parsed)) return Math.max(0, Math.min(WORLDS.length - 1, parsed));
-    } catch {}
-    return 0;
-  }
-
   function persistSelectedHero() {
     try {
       localStorage.setItem(heroSaveKey, selectedHero);
@@ -244,12 +203,6 @@
   function persistUnlockedLevel() {
     try {
       localStorage.setItem(saveKey, String(unlockedLevel));
-    } catch {}
-  }
-
-  function persistUnlockedWorldIndex() {
-    try {
-      localStorage.setItem(worldSaveKey, String(unlockedWorldIndex));
     } catch {}
   }
 
@@ -313,14 +266,11 @@
 
   function resetProgressAndReturnToMenu() {
     unlockedLevel = 0;
-    unlockedWorldIndex = 0;
-    currentWorldIndex = 0;
     specialProgress = LEVELS.map(level => Array((level.specials || []).length).fill(false));
     rewardProgress = LEVELS.map(() => false);
     medalProgress = Array.from({ length: ALL_STAGE_COUNT }, () => ({ swift: false, steady: false, specialist: false }));
     try {
       localStorage.removeItem(saveKey);
-      localStorage.removeItem(worldSaveKey);
       localStorage.removeItem(specialSaveKey);
       localStorage.removeItem(rewardSaveKey);
       localStorage.removeItem(medalSaveKey);
@@ -348,12 +298,6 @@
     updateUiMode();
   }
 
-  function openWorldSelect() {
-    menuStep = 'worlds';
-    updateUiMode();
-    sound('click');
-  }
-
   function resumeRun() {
     if (!hasActiveRun || !['playing', 'map'].includes(menuReturnState)) return;
     gameState = menuReturnState;
@@ -371,7 +315,6 @@
   }
 
   function openWorldMap() {
-    currentWorldIndex = 0;
     const nodes = selectableMapNodes();
     const targetNode = nodes.includes(currentMapNodeId()) ? currentMapNodeId() : (nodes[0] ?? 0);
     const targetIndex = stageIndexForMapNode(targetNode);
@@ -403,7 +346,6 @@
   }
 
   function openSideStagesMap() {
-    currentWorldIndex = 0;
     const nodes = selectableMapNodes();
     const targetNode = firstVisibleBranchTarget();
     const selectedNode = nodes.includes(targetNode) ? targetNode : stageIndexForMapNode(targetNode);
@@ -443,13 +385,6 @@
     if (clamped <= unlockedLevel) return;
     unlockedLevel = clamped;
     persistUnlockedLevel();
-  }
-
-  function setUnlockedWorldIndex(nextWorld) {
-    const clamped = Math.max(0, Math.min(WORLDS.length - 1, nextWorld));
-    if (clamped <= unlockedWorldIndex) return;
-    unlockedWorldIndex = clamped;
-    persistUnlockedWorldIndex();
   }
 
   function ensureAudio() {
@@ -1387,75 +1322,6 @@
   const MAP_NODE_BRANCH_OFFSET = 100;
   const MAP_NODE_BONUS = 200;
 
-  const WORLDS = [
-    {
-      id: 'candy_kingdom',
-      name: 'Candy Kingdom',
-      theme: 'meadow',
-      difficulty: 1,
-      unlockedBy: null,
-      finalGate: 'Kingdom Gate',
-      copy: 'The original candy world with the meadow, pretzel roads, frosting falls, waffle woods, cake courtyard, and the final kingdom climb.',
-      mechanics: 'Float lifts, tilt planks, slides, syrup, blink gates',
-      playable: true
-    },
-    {
-      id: 'spicy_candy_world',
-      name: 'Spicy Candy World',
-      theme: 'courtyard',
-      difficulty: 2,
-      unlockedBy: 'candy_kingdom',
-      finalGate: 'Cinnamon Flame Gate',
-      copy: 'Red-hot candy trails, molten syrup, heat vents, and rising spicy hazards push the pace up sharply.',
-      mechanics: 'Heat vents, burn floors, rising syrup, hot moving candy',
-      playable: false
-    },
-    {
-      id: 'hot_chocolate_world',
-      name: 'Hot Chocolate World',
-      theme: 'falls',
-      difficulty: 3,
-      unlockedBy: 'spicy_candy_world',
-      finalGate: 'Giant Mug Gate',
-      copy: 'Cocoa rivers, floating marshmallows, steam lifts, and warm slippery climbs make this world cozy but dangerous.',
-      mechanics: 'Steam lifts, cocoa flow, marshmallow rafts, melt bridges',
-      playable: false
-    },
-    {
-      id: 'cotton_candy_world',
-      name: 'Cotton Candy World',
-      theme: 'lollipops',
-      difficulty: 4,
-      unlockedBy: 'hot_chocolate_world',
-      finalGate: 'Pastel Cloud Gate',
-      copy: 'Pastel cloud islands, bouncy fluff platforms, drifting gusts, and low-gravity jumps make this world airy and playful.',
-      mechanics: 'Cloud crumble, wind gusts, low gravity, float chains',
-      playable: false
-    },
-    {
-      id: 'gummy_candy_world',
-      name: 'Gummy Candy World',
-      theme: 'gummy',
-      difficulty: 5,
-      unlockedBy: 'cotton_candy_world',
-      finalGate: 'Gummy Castle Gate',
-      copy: 'Elastic gummy terrain, sticky walls, glossy slopes, and jelly launch pads turn the world into a toybox of rebounds.',
-      mechanics: 'Elastic pads, sticky walls, jelly slides, gummy bounce',
-      playable: false
-    },
-    {
-      id: 'licorice_world',
-      name: 'Licorice World',
-      theme: 'keep',
-      difficulty: 6,
-      unlockedBy: 'gummy_candy_world',
-      finalGate: 'Twisted Licorice Gate',
-      copy: 'Dark licorice paths, rope bridges, hidden routes, and trap drops make the final world the trickiest one.',
-      mechanics: 'Rope swings, maze routes, falling platforms, hidden paths',
-      playable: false
-    }
-  ];
-
   menuButton.addEventListener('click', openMenu);
 
   heroButton.addEventListener('click', () => {
@@ -1468,23 +1334,10 @@
   menuGirlButton.addEventListener('click', () => { setHero('girl'); openMenuActions(); sound('click'); });
   resumeButton.addEventListener('click', resumeRun);
   startButton.addEventListener('click', startAdventure);
-  mapButton.addEventListener('click', openWorldSelect);
+  mapButton.addEventListener('click', openWorldMap);
   sideStagesButton.addEventListener('click', openSideStagesMap);
   resetProgressButton.addEventListener('click', resetProgressAndReturnToMenu);
   backToHeroButton.addEventListener('click', () => { menuStep = 'hero'; updateUiMode(); sound('click'); });
-  backToActionsButton.addEventListener('click', () => { menuStep = 'actions'; updateUiMode(); sound('click'); });
-  worldCardList.addEventListener('click', e => {
-    const button = e.target.closest('button[data-world-index]');
-    if (!button) return;
-    const worldIndex = Number(button.dataset.worldIndex);
-    if (!Number.isInteger(worldIndex) || worldIndex > unlockedWorldIndex) return;
-    currentWorldIndex = worldIndex;
-    if (worldIndex === 0) {
-      openWorldMap();
-      return;
-    }
-    sound('click');
-  });
 
   soundButton.addEventListener('click', () => {
     soundOn = !soundOn;
@@ -1831,7 +1684,6 @@
           setUnlockedLevel(levelIndex + 1);
           enterWorldMap(levelIndex + 1);
         } else {
-          setUnlockedWorldIndex(currentWorldIndex + 1);
           escapeTimer = 0;
           gameState = 'escape';
           sound('win');
@@ -3302,7 +3154,6 @@
   }
 
   unlockedLevel = readUnlockedLevel();
-  unlockedWorldIndex = readUnlockedWorldIndex();
   selectedHero = readSelectedHero();
   specialProgress = readSpecialProgress();
   rewardProgress = readRewardProgress();
