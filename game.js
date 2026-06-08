@@ -730,6 +730,19 @@
     ambientParticles = Array.from({ length: cfg.count }, () => buildAmbientParticle(theme));
   }
 
+  function triggerWonder(zone) {
+    if (zone.done) return;
+    zone.done = true;
+    wonderText = zone.text;
+    wonderTextTimer = 170;
+    if (zone.heart) {
+      player.hearts = Math.min(maxHearts, player.hearts + zone.heart);
+      player.invuln = Math.max(player.invuln, 42);
+    }
+    burst(zone.x + zone.w / 2, zone.y + zone.h / 2, zone.heart ? 18 : 12, zone.color || '#fff27a');
+    sound('checkpoint');
+  }
+
   function grantLevelReward(i) {
     if (rewardProgress[i] || !hasAllSpecialsInLevel(i)) return;
     rewardProgress[i] = true;
@@ -999,6 +1012,9 @@
     menuReturnState = 'playing';
     level = LEVELS[i];
     levelDecor = level.decor.map(d => ({ ...d }));
+    friendlyNpcs = (level.npcs || []).map(npc => ({ ...npc, bob: Math.random() * Math.PI * 2 }));
+    signHints = (level.signs || []).map(sign => ({ ...sign }));
+    wonderZones = (level.wonders || []).map(zone => ({ ...zone, done: false }));
     WORLD_W = level.worldW;
     platforms = level.platforms.map(p => ({
       ...p,
@@ -1039,6 +1055,8 @@
     particles.length = 0;
     resetAmbientParticles(level.theme);
     addRewardRouteContent(i);
+    wonderText = '';
+    wonderTextTimer = 0;
     winTimer = 0;
     shake = 0;
     levelIntroTimer = 150;
@@ -1420,6 +1438,11 @@
       if (rectsOverlap(player, hit)) collectSpecial(special);
     }
 
+    for (const zone of wonderZones) {
+      if (zone.done) continue;
+      if (rectsOverlap(player, zone)) triggerWonder(zone);
+    }
+
     for (const cp of checkpoints) {
       const pad = { x: cp.x, y: cp.y, w: 46, h: 46 };
       if (!cp.active && rectsOverlap(player, pad)) {
@@ -1445,6 +1468,7 @@
     if (player.hurtTimer > 0) player.hurtTimer--;
     if (levelIntroTimer > 0) levelIntroTimer--;
     if (storyTimer > 0) storyTimer--;
+    if (wonderTextTimer > 0) wonderTextTimer--;
     if (sugarTimer > 0) {
       sugarTimer--;
       if (time % 4 === 0) particles.push({ x: player.x + player.w / 2 - player.face * 8, y: player.y + 28, vx: -player.face * 0.7 + (Math.random() - 0.5), vy: (Math.random() - 0.5) * 1.5, r: 3 + Math.random() * 3, life: 28, color: '#fff27a' });
@@ -1556,6 +1580,8 @@
     ctx.translate(-cameraX, 0);
     drawDecor();
     drawPlatforms();
+    drawSigns();
+    drawFriendlyNpcs();
     drawCheckpoints();
     drawGoal();
     drawCandies();
@@ -1568,6 +1594,7 @@
     if (gameState === 'map') drawWorldMap();
     if (levelIntroTimer > 0 && gameState === 'playing' && winTimer === 0) drawLevelIntro();
     if (storyTimer > 0 && gameState === 'playing' && winTimer === 0) drawStoryBanner();
+    if (wonderTextTimer > 0 && gameState === 'playing' && winTimer === 0) drawWonderBanner();
     if (winTimer > 0 && gameState === 'playing') drawWin();
     if (paused && gameState === 'playing') drawPause();
     if (gameState === 'escape') drawEscape();
@@ -1666,6 +1693,44 @@
       }
       ctx.restore();
     }
+  }
+
+  function drawSigns() {
+    for (const sign of signHints) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(122,72,46,0.95)';
+      ctx.fillRect(sign.x + 18, sign.y + 14, 6, 34);
+      roundRect(sign.x, sign.y, 64, 24, 8, 'rgba(255,248,239,0.96)', 'rgba(122,72,46,0.18)');
+      ctx.fillStyle = '#a45627';
+      ctx.font = '900 9px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('HINT', sign.x + 32, sign.y + 15);
+      ctx.fillStyle = '#5a2e20';
+      ctx.font = '800 8px system-ui';
+      ctx.fillText(sign.text.length > 18 ? sign.text.slice(0, 18) : sign.text, sign.x + 32, sign.y + 24);
+      ctx.restore();
+    }
+    ctx.textAlign = 'start';
+  }
+
+  function drawFriendlyNpcs() {
+    for (const npc of friendlyNpcs) {
+      const bob = Math.sin(time * 0.09 + npc.bob) * 3;
+      const frame = assets[npc.frame];
+      if (!frame) continue;
+      ctx.save();
+      ctx.filter = 'drop-shadow(0 0 8px rgba(255,248,239,0.65))';
+      drawImageBottom(frame, npc.x, npc.y + bob, 42, 42, 1);
+      if (npc.text) {
+        roundRect(npc.x - 10, npc.y - 34 + bob, 122, 24, 10, 'rgba(255,248,239,0.88)', 'rgba(255,255,255,0.65)');
+        ctx.fillStyle = '#5a2e20';
+        ctx.font = '800 9px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText(npc.text, npc.x + 51, npc.y - 18 + bob, 112);
+      }
+      ctx.restore();
+    }
+    ctx.textAlign = 'start';
   }
 
   function drawPlatforms() {
@@ -1909,6 +1974,34 @@
     ctx.fillStyle = '#ffe28e';
     ctx.fillText('Keep moving through the candy world and stay on the safest path.', 146, 463);
     ctx.restore();
+  }
+
+  function drawWonderBanner() {
+    const compact = isMobileCanvas();
+    const alpha = Math.min(1, wonderTextTimer / 26);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    if (compact) {
+      roundRect(82, H - 214, 796, 66, 22, 'rgba(255,248,239,.90)', 'rgba(255,255,255,.70)');
+      ctx.fillStyle = '#d83787';
+      ctx.font = '900 13px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('Sweet Surprise', W / 2, H - 186);
+      ctx.fillStyle = '#5a2e20';
+      ctx.font = '800 11px system-ui';
+      ctx.fillText(wonderText, W / 2, H - 166, 720);
+    } else {
+      roundRect(164, 428, 632, 68, 20, 'rgba(255,248,239,.90)', 'rgba(255,255,255,.70)');
+      ctx.fillStyle = '#d83787';
+      ctx.font = '900 16px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('Sweet Surprise', W / 2, 454);
+      ctx.fillStyle = '#5a2e20';
+      ctx.font = '800 13px system-ui';
+      ctx.fillText(wonderText, W / 2, 476, 560);
+    }
+    ctx.restore();
+    ctx.textAlign = 'start';
   }
 
   function drawLevelIntro() {
