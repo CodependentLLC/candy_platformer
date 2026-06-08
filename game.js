@@ -43,6 +43,10 @@
   let levelTimer = levelTimeLimit;
   let soundOn = true;
   let audioCtx = null;
+  let musicState = '';
+  let musicNextNoteTime = 0;
+  let musicStep = 0;
+  let footstepCooldown = 0;
   let gameState = 'playing';
   let winTimer = 0;
   let storyTimer = 0;
@@ -63,6 +67,7 @@
   const heroSaveKey = 'candy-platformer-selected-hero';
   const specialSaveKey = 'candy-platformer-special-progress';
   const rewardSaveKey = 'candy-platformer-reward-progress';
+  const medalSaveKey = 'candy-platformer-medal-progress';
   let unlockedLevel = 0;
   let hasActiveRun = false;
   let menuReturnState = 'map';
@@ -153,7 +158,7 @@
     try {
       const raw = localStorage.getItem(saveKey);
       const parsed = Number(raw);
-      if (Number.isInteger(parsed)) return Math.max(0, Math.min(LEVELS.length - 1, parsed));
+      if (Number.isInteger(parsed)) return Math.max(0, Math.min(MAIN_LEVEL_COUNT - 1, parsed));
     } catch {}
     return 0;
   }
@@ -210,6 +215,26 @@
     } catch {}
   }
 
+  function readMedalProgress() {
+    const blank = Array.from({ length: ALL_STAGE_COUNT }, () => ({ swift: false, steady: false, specialist: false }));
+    try {
+      const raw = JSON.parse(localStorage.getItem(medalSaveKey) || 'null');
+      if (!Array.isArray(raw)) return blank;
+      return blank.map((row, idx) => ({
+        swift: !!(raw[idx] && raw[idx].swift),
+        steady: !!(raw[idx] && raw[idx].steady),
+        specialist: !!(raw[idx] && raw[idx].specialist)
+      }));
+    } catch {}
+    return blank;
+  }
+
+  function persistMedalProgress() {
+    try {
+      localStorage.setItem(medalSaveKey, JSON.stringify(medalProgress));
+    } catch {}
+  }
+
   function setHero(nextHero) {
     selectedHero = nextHero === 'girl' ? 'girl' : 'boy';
     persistSelectedHero();
@@ -241,7 +266,7 @@
   }
 
   function openWorldMap() {
-    const targetIndex = Math.max(0, Math.min(unlockedLevel, mapLevelIndex));
+    const targetIndex = Math.max(0, Math.min(maxMapSelection(), mapLevelIndex));
     loadLevel(targetIndex);
     hasActiveRun = true;
     menuReturnState = 'map';
@@ -259,7 +284,7 @@
   }
 
   function selectMapNode(nextIndex) {
-    const clamped = Math.max(0, Math.min(unlockedLevel, nextIndex));
+    const clamped = Math.max(0, Math.min(maxMapSelection(), nextIndex));
     if (clamped === mapLevelIndex) return;
     mapLevelIndex = clamped;
     mapMarkerFromIndex = mapMarkerToIndex;
@@ -270,7 +295,7 @@
   }
 
   function setUnlockedLevel(nextLevel) {
-    const clamped = Math.max(0, Math.min(LEVELS.length - 1, nextLevel));
+    const clamped = Math.max(0, Math.min(MAIN_LEVEL_COUNT - 1, nextLevel));
     if (clamped <= unlockedLevel) return;
     unlockedLevel = clamped;
     persistUnlockedLevel();
@@ -285,40 +310,109 @@
     return audioCtx;
   }
 
-  function sound(kind) {
-    const ac = ensureAudio();
-    if (!ac) return;
-    const map = {
-      jump: [520, 0.07, 'triangle', 0.05],
-      bounce: [680, 0.10, 'sine', 0.06],
-      collect: [880, 0.07, 'sine', 0.05],
-      sugar: [980, 0.25, 'sawtooth', 0.04],
-      stomp: [240, 0.12, 'square', 0.045],
-      hurt: [150, 0.18, 'sawtooth', 0.04],
-      checkpoint: [740, 0.16, 'triangle', 0.055],
-      win: [660, 0.25, 'sine', 0.06],
-      gate: [360, 0.16, 'square', 0.045],
-      click: [440, 0.06, 'triangle', 0.035],
-      life: [1040, 0.18, 'triangle', 0.05],
-      ending: [580, 0.35, 'sine', 0.06]
-    };
-    const [freq, dur, type, gain] = map[kind] || map.click;
-    const now = ac.currentTime;
+  function stopMusic() {
+    musicState = '';
+    musicNextNoteTime = 0;
+    musicStep = 0;
+  }
+
+  function playTone(ac, freq, dur, type, gain, when, ramp = 'up') {
     const osc = ac.createOscillator();
     const g = ac.createGain();
     osc.type = type;
-    osc.frequency.setValueAtTime(freq, now);
-    if (kind === 'collect' || kind === 'checkpoint' || kind === 'win' || kind === 'life' || kind === 'ending') {
-      osc.frequency.exponentialRampToValueAtTime(freq * 1.45, now + dur);
-    } else if (kind === 'hurt' || kind === 'stomp' || kind === 'gate') {
-      osc.frequency.exponentialRampToValueAtTime(Math.max(60, freq * 0.55), now + dur);
-    }
-    g.gain.setValueAtTime(0.0001, now);
-    g.gain.exponentialRampToValueAtTime(gain, now + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    osc.frequency.setValueAtTime(freq, when);
+    if (ramp === 'up') osc.frequency.exponentialRampToValueAtTime(freq * 1.28, when + dur);
+    if (ramp === 'down') osc.frequency.exponentialRampToValueAtTime(Math.max(60, freq * 0.62), when + dur);
+    if (ramp === 'pulse') osc.frequency.exponentialRampToValueAtTime(freq * 1.08, when + dur * 0.5);
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(gain, when + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
     osc.connect(g).connect(ac.destination);
-    osc.start(now);
-    osc.stop(now + dur + 0.02);
+    osc.start(when);
+    osc.stop(when + dur + 0.03);
+  }
+
+  function currentMusicMode() {
+    if (!soundOn) return 'silent';
+    if (gameState === 'menu') return 'menu';
+    if (gameState === 'map') return 'map';
+    if (gameState === 'escape' || gameState === 'ending') return 'ending';
+    if (gameState === 'playing' && !paused) return level ? level.theme : 'meadow';
+    return 'silent';
+  }
+
+  function updateMusic() {
+    const ac = ensureAudio();
+    const mode = currentMusicMode();
+    if (!ac || mode === 'silent') {
+      stopMusic();
+      return;
+    }
+    if (musicState !== mode) {
+      musicState = mode;
+      musicNextNoteTime = ac.currentTime + 0.02;
+      musicStep = 0;
+    }
+    const patterns = {
+      menu: { lead: [523.25, 659.25, 783.99, 659.25], bass: [261.63, 329.63], stepDur: 0.28, leadType: 'triangle', bassType: 'sine' },
+      map: { lead: [659.25, 783.99, 698.46, 880], bass: [220, 293.66], stepDur: 0.24, leadType: 'triangle', bassType: 'sine' },
+      meadow: { lead: [659.25, 783.99, 880, 783.99], bass: [261.63, 329.63], stepDur: 0.22, leadType: 'triangle', bassType: 'sine' },
+      licorice: { lead: [587.33, 698.46, 659.25, 783.99], bass: [220, 246.94], stepDur: 0.22, leadType: 'square', bassType: 'triangle' },
+      falls: { lead: [698.46, 880, 987.77, 880], bass: [293.66, 349.23], stepDur: 0.24, leadType: 'sine', bassType: 'triangle' },
+      woods: { lead: [523.25, 587.33, 698.46, 587.33], bass: [196, 246.94], stepDur: 0.24, leadType: 'triangle', bassType: 'sine' },
+      courtyard: { lead: [659.25, 739.99, 880, 783.99], bass: [246.94, 329.63], stepDur: 0.2, leadType: 'square', bassType: 'triangle' },
+      keep: { lead: [783.99, 880, 987.77, 1046.5], bass: [293.66, 392], stepDur: 0.19, leadType: 'square', bassType: 'sine' },
+      ending: { lead: [880, 987.77, 1174.66, 1318.51], bass: [329.63, 392], stepDur: 0.34, leadType: 'triangle', bassType: 'sine' }
+    };
+    const pattern = patterns[mode] || patterns.meadow;
+    while (musicNextNoteTime < ac.currentTime + 0.28) {
+      const leadFreq = pattern.lead[musicStep % pattern.lead.length];
+      const bassFreq = pattern.bass[musicStep % pattern.bass.length];
+      playTone(ac, leadFreq, pattern.stepDur * 0.78, pattern.leadType, 0.022, musicNextNoteTime, 'pulse');
+      if (musicStep % 2 === 0) playTone(ac, bassFreq, pattern.stepDur * 0.92, pattern.bassType, 0.018, musicNextNoteTime, 'down');
+      musicNextNoteTime += pattern.stepDur;
+      musicStep++;
+    }
+  }
+
+  function sound(kind) {
+    const ac = ensureAudio();
+    if (!ac) return;
+    const now = ac.currentTime;
+    if (kind === 'jump') {
+      playTone(ac, 520, 0.07, 'triangle', 0.05, now, 'up');
+    } else if (kind === 'bounce') {
+      playTone(ac, 680, 0.1, 'sine', 0.06, now, 'up');
+    } else if (kind === 'collect') {
+      playTone(ac, 880, 0.07, 'sine', 0.05, now, 'up');
+    } else if (kind === 'sugar') {
+      playTone(ac, 980, 0.25, 'sawtooth', 0.04, now, 'up');
+    } else if (kind === 'stomp') {
+      playTone(ac, 240, 0.12, 'square', 0.05, now, 'down');
+      playTone(ac, 360, 0.08, 'triangle', 0.025, now + 0.02, 'up');
+    } else if (kind === 'hurt') {
+      playTone(ac, 150, 0.18, 'sawtooth', 0.04, now, 'down');
+    } else if (kind === 'checkpoint') {
+      playTone(ac, 740, 0.16, 'triangle', 0.055, now, 'up');
+    } else if (kind === 'win') {
+      playTone(ac, 660, 0.25, 'sine', 0.06, now, 'up');
+    } else if (kind === 'gate') {
+      playTone(ac, 360, 0.16, 'square', 0.045, now, 'down');
+    } else if (kind === 'click') {
+      playTone(ac, 440, 0.06, 'triangle', 0.035, now, 'pulse');
+    } else if (kind === 'life') {
+      playTone(ac, 1040, 0.18, 'triangle', 0.05, now, 'up');
+    } else if (kind === 'ending') {
+      playTone(ac, 580, 0.35, 'sine', 0.06, now, 'up');
+    } else if (kind === 'step') {
+      playTone(ac, 180, 0.035, 'triangle', 0.015, now, 'pulse');
+    } else if (kind === 'run') {
+      playTone(ac, 220, 0.03, 'square', 0.018, now, 'pulse');
+    } else if (kind === 'fall') {
+      playTone(ac, 320, 0.22, 'sawtooth', 0.028, now, 'down');
+    } else {
+      playTone(ac, 440, 0.06, 'triangle', 0.035, now, 'pulse');
+    }
   }
 
   function chordWin() {
@@ -622,6 +716,42 @@
     }
   ];
 
+  const BONUS_STAGES = [
+    {
+      name: 'Morning Star Run',
+      theme: 'keep',
+      chapter: 'Bonus Stage',
+      story: 'A hidden candy trail opens beyond the map, lit by every special star-candy you found along the way.',
+      tip: 'Bonus run: choose the gentle lower route or the faster high route, then bring the Morning Star safely home.',
+      success: 'You found the hidden world, crossed the bonus trail, and claimed the Morning Star Run.',
+      worldW: 2180,
+      start: { x: 70, y: 392 },
+      goal: { x: 2040, y: 214 },
+      decor: [D(604, 254, 'candy_arch', { h: 64, alpha: 0.34, tint: 'rgba(255,242,122,0.45)' }), D(1388, 190, 'lollipop_swirl', { h: 72, alpha: 0.74 }), D(1924, 160, 'candy_arch', { h: 72, alpha: 0.36, tint: 'rgba(255,242,122,0.52)' })],
+      platforms: [
+        P(0, 452, 300, 80, 'icing'), P(330, 406, 150, 22, 'cookie'), P(520, 368, 130, 20, 'float', { minY: 340, maxY: 386, speed: 0.5, dir: 1 }),
+        P(696, 406, 180, 22, 'icing'), P(710, 294, 118, 18, 'slide', { slideDir: 0.26 }), P(872, 348, 136, 20, 'tilt'),
+        M(1042, 314, 126, 22, 1042, 1218, 1.16), P(1218, 252, 102, 18, 'wafer'), P(1340, 396, 180, 22, 'syrup'),
+        B(1560, 382, 84), TG(1660, 250, 86, 96, 16, 66, 84), P(1766, 214, 118, 18, 'cookie'),
+        P(1888, 172, 104, 18, 'icing'), P(1980, 420, 190, 80, 'icing')
+      ],
+      candies: [
+        C('star_blue', 160, 406), C('bean_green', 390, 370), C('star_pink', 554, 330), C('bean_blue', 768, 260), C('star_purple', 930, 306),
+        C('bean_orange', 1110, 272), C('star_blue', 1266, 214), C('bean_red', 1450, 358), C('star_pink', 1596, 330), C('star_purple', 1822, 176), C('star_blue', 1998, 142)
+      ],
+      specials: [],
+      enemies: [E(408, 372, 'gummy', 110), E(880, 312, 'beetle', 90), E(1456, 362, 'marsh', 90), E(1792, 180, 'jaw', 80)],
+      checkpoints: [{ x: 1188, y: 286, active: false }, { x: 1780, y: 206, active: false }],
+      npcs: [F(224, 420, 'jelly_pink', 'You opened the hidden world!'), F(1884, 194, 'jelly_blue', 'The Morning Star path leads home.')],
+      signs: [HN(676, 388, 'Low route is safer. High route is faster.'), HN(1654, 226, 'Bonus gates still follow a rhythm.')],
+      wonders: [WZ(688, 272, 180, 120, 'A secret sky-road opens, with two routes instead of one.', { color: '#fff27a' }), WZ(1840, 150, 180, 110, 'The Morning Star glows brighter than the rest of the candy sky.', { heart: 1, color: '#fff27a' })]
+    }
+  ];
+
+  const MAIN_LEVEL_COUNT = LEVELS.length;
+  const BONUS_STAGE_INDEX = MAIN_LEVEL_COUNT;
+  const ALL_STAGE_COUNT = MAIN_LEVEL_COUNT + BONUS_STAGES.length;
+
   const maxHearts = 3;
   const maxLives = 5;
   const player = {
@@ -661,8 +791,10 @@
   let lives = maxLives;
   let specialProgress = [];
   let rewardProgress = [];
+  let medalProgress = [];
   let wonderText = '';
   let wonderTextTimer = 0;
+  let runTookDamage = false;
 
   function levelSpecialCount(i) {
     return (LEVELS[i] && LEVELS[i].specials ? LEVELS[i].specials.length : 0);
@@ -676,6 +808,7 @@
   }
 
   function hasAllSpecialsInLevel(i) {
+    if (i >= MAIN_LEVEL_COUNT) return false;
     const total = levelSpecialCount(i);
     return total > 0 && collectedSpecialCount(i) === total;
   }
@@ -694,6 +827,32 @@
 
   function allSpecialsComplete() {
     return totalSpecialsFound() === totalSpecialCount();
+  }
+
+  function isBonusStageIndex(i) {
+    return i >= MAIN_LEVEL_COUNT;
+  }
+
+  function getStageData(i) {
+    return isBonusStageIndex(i) ? BONUS_STAGES[i - MAIN_LEVEL_COUNT] : LEVELS[i];
+  }
+
+  function maxMapSelection() {
+    return allSpecialsComplete() ? BONUS_STAGE_INDEX : unlockedLevel;
+  }
+
+  function medalCount(i) {
+    const row = medalProgress[i] || {};
+    return (row.swift ? 1 : 0) + (row.steady ? 1 : 0) + (row.specialist ? 1 : 0);
+  }
+
+  function grantMedal(i, key, color = '#fff27a') {
+    if (!medalProgress[i]) medalProgress[i] = { swift: false, steady: false, specialist: false };
+    if (medalProgress[i][key]) return;
+    medalProgress[i][key] = true;
+    persistMedalProgress();
+    burst(player.x + player.w / 2, player.y + 4, 12, color);
+    sound('checkpoint');
   }
 
   function rewardRouteUnlocked(i) {
@@ -864,6 +1023,7 @@
 
   soundButton.addEventListener('click', () => {
     soundOn = !soundOn;
+    if (!soundOn) stopMusic();
     updateUiMode();
     if (soundOn) sound('click');
   });
@@ -901,14 +1061,14 @@
   addEventListener('resize', updateUiMode);
 
   function enterWorldMap(nextLevel) {
-    const clamped = Math.max(0, Math.min(unlockedLevel, nextLevel));
+    const clamped = Math.max(0, Math.min(maxMapSelection(), nextLevel));
     menuReturnState = 'map';
     mapLevelIndex = clamped;
     mapPulse = 0;
     mapMoveCooldown = 0;
     mapRevealTimer = 42;
     mapArrivalTimer = 0;
-    mapMarkerFromIndex = Math.max(0, Math.min(LEVELS.length - 1, levelIndex));
+    mapMarkerFromIndex = Math.max(0, Math.min(maxMapSelection(), levelIndex));
     mapMarkerToIndex = clamped;
     mapMarkerProgress = 0;
     winTimer = 0;
@@ -932,7 +1092,7 @@
     mapMarkerProgress = 1;
     mapArrivalTimer = 0;
     updatePauseButton();
-    loadLevel(Math.max(0, Math.min(LEVELS.length - 1, startLevel)));
+    loadLevel(Math.max(0, Math.min(MAIN_LEVEL_COUNT - 1, startLevel)));
     gameState = 'playing';
     introTimer = 0;
     updatePauseButton();
@@ -1010,7 +1170,7 @@
   function loadLevel(i) {
     levelIndex = i;
     menuReturnState = 'playing';
-    level = LEVELS[i];
+    level = getStageData(i);
     levelDecor = level.decor.map(d => ({ ...d }));
     friendlyNpcs = (level.npcs || []).map(npc => ({ ...npc, bob: Math.random() * Math.PI * 2 }));
     signHints = (level.signs || []).map(sign => ({ ...sign }));
@@ -1054,13 +1214,14 @@
     levelTimer = levelTimeLimit;
     particles.length = 0;
     resetAmbientParticles(level.theme);
-    addRewardRouteContent(i);
+    if (!isBonusStageIndex(i)) addRewardRouteContent(i);
     wonderText = '';
     wonderTextTimer = 0;
     winTimer = 0;
     shake = 0;
     levelIntroTimer = 150;
     storyTimer = 180;
+    runTookDamage = false;
   }
 
   function bankLevelCandy() {
@@ -1072,6 +1233,16 @@
       burst(player.x + player.w / 2, player.y, 28, '#fff27a');
       sound('life');
     }
+  }
+
+  function grantStageMedals() {
+    if (isBonusStageIndex(levelIndex)) {
+      grantMedal(levelIndex, 'specialist', '#ff9ed0');
+      return;
+    }
+    if (levelTimer >= 20 * 60) grantMedal(levelIndex, 'swift', '#71dfff');
+    if (!runTookDamage) grantMedal(levelIndex, 'steady', '#79f0c3');
+    if (hasAllSpecialsInLevel(levelIndex)) grantMedal(levelIndex, 'specialist', '#fff27a');
   }
 
   function rectsOverlap(a, b) {
@@ -1117,6 +1288,7 @@
 
   function update() {
     time += 1;
+    updateMusic();
     updateParticles();
     updateAmbientParticles();
     if (gameState === 'map') {
@@ -1139,7 +1311,7 @@
       if (mapMoveCooldown === 0 && mapMarkerProgress >= 1) {
         if (mapLeft && mapLevelIndex > 0) {
           selectMapNode(mapLevelIndex - 1);
-        } else if (mapRight && mapLevelIndex < unlockedLevel) {
+        } else if (mapRight && mapLevelIndex < maxMapSelection()) {
           selectMapNode(mapLevelIndex + 1);
         }
       }
@@ -1167,7 +1339,9 @@
       winTimer++;
       player.anim += 0.11;
       if (winTimer === 120) {
-        if (levelIndex < LEVELS.length - 1) {
+        if (isBonusStageIndex(levelIndex)) {
+          enterWorldMap(BONUS_STAGE_INDEX);
+        } else if (levelIndex < MAIN_LEVEL_COUNT - 1) {
           setUnlockedLevel(levelIndex + 1);
           enterWorldMap(levelIndex + 1);
         } else {
@@ -1246,6 +1420,12 @@
     if (!left && !right) player.vx *= friction;
     player.vx = Math.max(-maxSpeed * speedBoost, Math.min(maxSpeed * speedBoost, player.vx));
     if (Math.abs(player.vx) < 0.05) player.vx = 0;
+
+    if (footstepCooldown > 0) footstepCooldown--;
+    if (player.onGround && Math.abs(player.vx) > 1.2 && footstepCooldown === 0) {
+      sound(Math.abs(player.vx) > 4.4 ? 'run' : 'step');
+      footstepCooldown = Math.abs(player.vx) > 4.4 ? 9 : 14;
+    }
 
     if (jumpPressed) player.jumpBuffer = bufferFrames;
     jumpPressed = false;
@@ -1455,6 +1635,7 @@
     }
 
     if (rectsOverlap(player, goal)) {
+      grantStageMedals();
       bankLevelCandy();
       winTimer = 1;
       burst(player.x + player.w / 2, player.y, 60, '#fff27a');
@@ -1482,6 +1663,7 @@
   }
 
   function hurtPlayer() {
+    runTookDamage = true;
     player.hearts--;
     player.invuln = 100;
     player.hurtTimer = 28;
@@ -1508,11 +1690,12 @@
       return;
     }
     respawn();
-    if (reason === 'fall') sound('hurt');
+    if (reason === 'fall') sound('fall');
   }
 
   function respawn() {
     levelTimer = levelTimeLimit;
+    footstepCooldown = 0;
     player.x = player.lastSafe.x;
     player.y = player.lastSafe.y;
     player.vx = 0;
@@ -1942,7 +2125,7 @@
     const levelSpecialTotal = levelSpecialCount(levelIndex);
     const levelSpecialFound = collectedSpecialCount(levelIndex);
     hudLevelName.textContent = level.name;
-    hudLevelValue.textContent = `${levelIndex + 1}/${LEVELS.length}`;
+    hudLevelValue.textContent = isBonusStageIndex(levelIndex) ? 'Bonus' : `${levelIndex + 1}/${MAIN_LEVEL_COUNT}`;
     hudCandyValue.textContent = String(score);
     hudTotalValue.textContent = String(totalCandy + score);
     hudHeartsValue.textContent = `${Math.max(0, player.hearts)}/${maxHearts}`;
@@ -2045,6 +2228,7 @@
       x: compact ? (WORLD_MAP_BONUS_NODE.mobileX ?? WORLD_MAP_BONUS_NODE.x) : WORLD_MAP_BONUS_NODE.x,
       y: compact ? (WORLD_MAP_BONUS_NODE.mobileY ?? WORLD_MAP_BONUS_NODE.y) : WORLD_MAP_BONUS_NODE.y
     };
+    const pointForMapIndex = index => (index === BONUS_STAGE_INDEX ? bonusNode : nodeLayout[index]);
 
     ctx.save();
     if (worldMapBackground.complete && worldMapBackground.naturalWidth > 0) {
@@ -2100,6 +2284,7 @@
       const specialTotal = levelSpecialCount(index);
       const specialFound = collectedSpecialCount(index);
       const allSpecials = specialTotal > 0 && specialFound === specialTotal;
+      const medals = medalProgress[index] || { swift: false, steady: false, specialist: false };
       const plateFill = unlocked ? node.plate : 'rgba(240,234,238,.76)';
       const ringFill = unlocked ? node.color : '#d8c8d0';
       const plateW = compact ? 56 : 62;
@@ -2162,6 +2347,13 @@
       ctx.font = compact ? '800 9px system-ui' : '800 10px system-ui';
       ctx.fillText(node.label, pos.x, pos.y + pos.labelDy + 11);
 
+      const medalY = pos.y - (compact ? 20 : 24);
+      const medalXStart = pos.x - (compact ? 14 : 18);
+      [['swift', 'star_blue'], ['steady', 'bean_green'], ['specialist', 'star_pink']].forEach(([key, icon], medalIdx) => {
+        if (!medals[key]) return;
+        drawImageCentered(assets[icon], medalXStart + medalIdx * (compact ? 14 : 16), medalY, compact ? 8 : 10);
+      });
+
       if (allSpecials) {
         roundRect(pos.x - (compact ? 18 : 20), pos.y + pos.labelDy + (compact ? 18 : 20), compact ? 36 : 40, compact ? 11 : 12, 6, 'rgba(255,255,255,.86)', 'rgba(255,242,122,.28)');
         ctx.fillStyle = '#d83787';
@@ -2198,6 +2390,7 @@
       ctx.arc(bonusNode.x, bonusNode.y - 5, compact ? 16 : 18, 0, Math.PI * 2);
       ctx.fill();
       drawImageCentered(assets[bonusNode.icon], bonusNode.x, bonusNode.y - 6, compact ? 18 : 22);
+      if (medalCount(BONUS_STAGE_INDEX) > 0) drawImageCentered(assets.star_blue, bonusNode.x + (compact ? 20 : 24), bonusNode.y - (compact ? 22 : 26), compact ? 10 : 12);
       roundRect(bonusNode.x - (compact ? 34 : 40), bonusNode.y + (compact ? 12 : 14), compact ? 68 : 80, compact ? 14 : 16, 7, 'rgba(255,248,239,.88)', 'rgba(255,242,122,.24)');
       ctx.fillStyle = '#d83787';
       ctx.font = compact ? '900 8px system-ui' : '900 9px system-ui';
@@ -2207,8 +2400,16 @@
       ctx.fillText('SECRET', bonusNode.x, bonusNode.y + (compact ? 31 : 36));
     }
 
-    const markerFrom = nodeLayout[mapMarkerFromIndex];
-    const markerTo = nodeLayout[mapMarkerToIndex];
+    if (globalAllSpecials && mapLevelIndex === BONUS_STAGE_INDEX) {
+      ctx.strokeStyle = '#fff27a';
+      ctx.lineWidth = compact ? 4 : 5;
+      ctx.beginPath();
+      ctx.arc(bonusNode.x, bonusNode.y - 5, compact ? 22 + Math.sin(mapPulse) * 1.5 : 25 + Math.sin(mapPulse) * 2, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    const markerFrom = pointForMapIndex(mapMarkerFromIndex);
+    const markerTo = pointForMapIndex(mapMarkerToIndex);
     const markerT = mapMarkerProgress;
     const markerX = markerFrom.x + (markerTo.x - markerFrom.x) * markerT;
     const markerY = markerFrom.y + (markerTo.y - markerFrom.y) * markerT - (compact ? 12 : 14) - Math.sin(markerT * Math.PI) * 2;
@@ -2229,13 +2430,13 @@
     }
 
     if (compact) {
-      roundRect(18, H - 58, 196, 40, 12, 'rgba(255,248,239,.62)', '#ffffff');
+      roundRect(18, H - 58, 210, 40, 12, 'rgba(255,248,239,.62)', '#ffffff');
       ctx.fillStyle = '#5a2e20';
       ctx.font = '800 10px system-ui';
-      ctx.fillText(LEVELS[mapLevelIndex].name, 116, H - 40);
+      ctx.fillText(getStageData(mapLevelIndex).name, 123, H - 40);
       ctx.font = '800 9px system-ui';
-      const routeText = rewardRouteUnlocked(mapLevelIndex) ? 'Bonus route open' : `Specials ${collectedSpecialCount(mapLevelIndex)}/${levelSpecialCount(mapLevelIndex)}`;
-      ctx.fillText(routeText, 116, H - 26);
+      const routeText = mapLevelIndex === BONUS_STAGE_INDEX ? 'Hidden world open' : rewardRouteUnlocked(mapLevelIndex) ? 'Safe route open' : `Challenge route live`;
+      ctx.fillText(routeText, 123, H - 26);
       if (globalAllSpecials) {
         roundRect(W - 182, H - 54, 160, 34, 12, 'rgba(255,248,239,.72)', '#ffffff');
         ctx.fillStyle = '#d83787';
@@ -2247,11 +2448,16 @@
       ctx.fillStyle = '#d83787';
       ctx.font = '900 12px system-ui';
       ctx.fillText('Secret Ending Badge Ready', W - 146, 42);
-    } else if (rewardRouteUnlocked(mapLevelIndex)) {
+    } else if (!isBonusStageIndex(mapLevelIndex) && rewardRouteUnlocked(mapLevelIndex)) {
       roundRect(W - 230, 18, 186, 36, 14, 'rgba(255,248,239,.72)', '#ffffff');
       ctx.fillStyle = '#a45627';
       ctx.font = '900 12px system-ui';
-      ctx.fillText('Bonus Route Open', W - 137, 42);
+      ctx.fillText('Safe Route Open', W - 137, 42);
+    } else if (!isBonusStageIndex(mapLevelIndex)) {
+      roundRect(W - 244, 18, 200, 36, 14, 'rgba(255,248,239,.72)', '#ffffff');
+      ctx.fillStyle = '#a45627';
+      ctx.font = '900 12px system-ui';
+      ctx.fillText('Challenge Route Active', W - 144, 42);
     }
 
     if (mapRevealTimer > 0) {
@@ -2266,15 +2472,16 @@
 
   function drawWin() {
     const compact = isMobileCanvas();
+    const bonusStage = isBonusStageIndex(levelIndex);
     if (compact) {
       roundRect(90, H - 164, 780, 120, 24, 'rgba(255,245,252,.92)', '#ffffff');
       ctx.textAlign = 'center';
       ctx.fillStyle = '#d83787';
       ctx.font = '900 24px system-ui';
-      ctx.fillText(levelIndex < LEVELS.length - 1 ? 'Chapter Clear!' : 'The Way Home Is Open!', W / 2, H - 126);
+      ctx.fillText(bonusStage ? 'Bonus Clear!' : levelIndex < MAIN_LEVEL_COUNT - 1 ? 'Chapter Clear!' : 'The Way Home Is Open!', W / 2, H - 126);
       ctx.fillStyle = '#5a2e20';
       ctx.font = '800 14px system-ui';
-      ctx.fillText(levelIndex < LEVELS.length - 1 ? level.success : 'Hold steady. The final scene is next.', W / 2, H - 102, 700);
+      ctx.fillText(bonusStage ? 'You found the hidden world and brought the Morning Star safely through.' : levelIndex < MAIN_LEVEL_COUNT - 1 ? level.success : 'Hold steady. The final scene is next.', W / 2, H - 102, 700);
       ctx.font = '700 12px system-ui';
       ctx.fillText(`Specials found ${collectedSpecialCount(levelIndex)}/${levelSpecialCount(levelIndex)}`, W / 2, H - 80);
       ctx.fillText('Tap Go to continue.', W / 2, H - 62);
@@ -2285,7 +2492,16 @@
     ctx.textAlign = 'center';
     ctx.fillStyle = '#d83787';
     ctx.font = compact ? '900 34px system-ui' : '900 42px system-ui';
-    if (levelIndex < LEVELS.length - 1) {
+    if (bonusStage) {
+      ctx.fillText('Bonus Clear!', W / 2, compact ? 196 : 214);
+      ctx.fillStyle = '#5a2e20';
+      ctx.font = compact ? '800 20px system-ui' : '800 22px system-ui';
+      ctx.fillText('You cleared the hidden Morning Star Run.', W / 2, compact ? 240 : 258);
+      ctx.font = compact ? '700 17px system-ui' : '700 18px system-ui';
+      ctx.fillText('The secret world is now part of your replay path on the map.', W / 2, compact ? 286 : 304, compact ? 700 : 520);
+      ctx.fillText('A bonus medal has been added to the hidden world.', W / 2, compact ? 320 : 334);
+      ctx.fillText('The map is reopening...', W / 2, compact ? 350 : 362);
+    } else if (levelIndex < MAIN_LEVEL_COUNT - 1) {
       ctx.fillText('Chapter Clear!', W / 2, compact ? 196 : 214);
       ctx.fillStyle = '#5a2e20';
       ctx.font = compact ? '800 20px system-ui' : '800 22px system-ui';
@@ -2556,6 +2772,7 @@
   selectedHero = readSelectedHero();
   specialProgress = readSpecialProgress();
   rewardProgress = readRewardProgress();
+  medalProgress = readMedalProgress();
   updateHeroButton();
   updateFullscreenButton();
   updatePauseButton();
