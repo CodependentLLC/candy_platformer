@@ -1182,6 +1182,9 @@
 
     for (const enemy of enemies) {
       if (!enemy.alive) continue;
+      const enemyMidX = enemy.x + enemy.w / 2;
+      const playerMidX = player.x + player.w / 2;
+      enemy.alert = Math.abs(playerMidX - enemyMidX) < 190 && Math.abs((player.y + player.h / 2) - (enemy.y + enemy.h / 2)) < 120;
       if (enemy.chase) {
         if (!enemy.chaseActive && player.x >= enemy.triggerX) {
           enemy.chaseActive = true;
@@ -1196,11 +1199,16 @@
           continue;
         }
       } else {
+        const dir = enemy.vx === 0 ? 1 : Math.sign(enemy.vx);
+        const alertScale = enemy.kind === 'jaw' ? 1.14 : enemy.kind === 'beetle' ? 1.08 : enemy.kind === 'gummy' ? 1.1 : 0.94;
+        const targetSpeed = enemy.baseSpeed * (enemy.alert ? alertScale : 1);
+        enemy.vx += (dir * targetSpeed - enemy.vx) * 0.14;
         enemy.x += enemy.vx;
         const outOfRange = enemy.x < enemy.minX || enemy.x > enemy.maxX;
         const noGroundAhead = !outOfRange && !enemyHasGroundAhead(enemy);
         if (outOfRange || noGroundAhead) {
           enemy.vx *= -1;
+          if (enemy.alert && enemy.kind !== 'jaw' && time % 8 === 0) burst(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, 4, '#fff5dc');
           if (outOfRange) enemy.x = Math.max(enemy.minX, Math.min(enemy.maxX, enemy.x));
           else enemy.x += enemy.vx * 2;
         }
