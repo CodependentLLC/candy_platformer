@@ -1443,6 +1443,45 @@
       ctx.fill();
     }
     ctx.globalAlpha = 1;
+
+    ctx.save();
+    ctx.globalAlpha = 0.08;
+    ctx.fillStyle = '#fffaf1';
+    for (let i = 0; i < 3; i++) {
+      const x = ((i * 310 + time * 0.22) % (W + 240)) - 120;
+      ctx.fillRect(x, 0, 46, H);
+    }
+    ctx.restore();
+  }
+
+  function drawAmbientParticles() {
+    if (!level) return;
+    for (const p of ambientParticles) {
+      const pulse = 0.72 + Math.sin(p.twinkle) * 0.28;
+      ctx.save();
+      ctx.globalAlpha = p.alpha * pulse;
+      if (p.kind === 'dust') {
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (p.kind === 'sparkle') {
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(p.x - p.r, p.y);
+        ctx.lineTo(p.x + p.r, p.y);
+        ctx.moveTo(p.x, p.y - p.r);
+        ctx.lineTo(p.x, p.y + p.r);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, p.r * 0.92, p.r * 0.72, Math.sin(p.twinkle) * 0.25, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
   }
 
   function drawDecor() {
@@ -1450,12 +1489,23 @@
     for (const d of level.decor) {
       const img = assets[d.img];
       if (!img) continue;
+      const bobAmp = d.bobAmp ?? (d.img.includes('arch') ? 3 : 5);
+      const bob = Math.sin(time * (d.floatSpeed || 0.018) + d.x * 0.01) * bobAmp;
+      const sway = Math.sin(time * (d.swingSpeed || 0.014) + d.y * 0.01) * (d.swingAmp ?? (d.img.includes('lollipop') ? 4 : 1.8));
       ctx.save();
-      ctx.globalAlpha = d.alpha ?? 0.64;
+      ctx.globalAlpha = (d.alpha ?? 0.64) + Math.sin(time * 0.02 + d.x * 0.02) * 0.04;
+      ctx.translate(0, bob);
+      if (sway !== 0) ctx.rotate((sway * Math.PI) / 720);
       if (d.tint) {
         ctx.filter = `drop-shadow(0 0 10px ${d.tint})`;
+      } else if (d.img.includes('arch')) {
+        ctx.filter = 'drop-shadow(0 0 10px rgba(255,255,255,0.25))';
       }
       drawImageBottom(img, d.x, d.y, d.h || 72, d.w, d.flip || 1);
+      if (d.img.includes('arch') && Math.sin(time * 0.06 + d.x * 0.03) > 0.68) {
+        ctx.globalAlpha = 0.4;
+        drawImageCentered(assets.star_pink, d.x + 26, d.y - 14, 16);
+      }
       ctx.restore();
     }
   }
