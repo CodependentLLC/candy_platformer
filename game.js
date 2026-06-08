@@ -10,8 +10,14 @@
   const resumeButton = document.getElementById('resumeButton');
   const startButton = document.getElementById('startButton');
   const mapButton = document.getElementById('mapButton');
+  const sideStagesButton = document.getElementById('sideStagesButton');
+  const resetProgressButton = document.getElementById('resetProgressButton');
   const menuBoyButton = document.getElementById('menuBoyButton');
   const menuGirlButton = document.getElementById('menuGirlButton');
+  const menuHeroView = document.getElementById('menuHeroView');
+  const menuActionView = document.getElementById('menuActionView');
+  const menuSelectedHeroText = document.getElementById('menuSelectedHeroText');
+  const backToHeroButton = document.getElementById('backToHeroButton');
   const soundButton = document.getElementById('soundButton');
   const fullscreenButton = document.getElementById('fullscreenButton');
   const pauseButton = document.getElementById('pauseButton');
@@ -63,6 +69,7 @@
   let mapMarkerToIndex = 0;
   let mapMarkerProgress = 1;
   let mapArrivalTimer = 0;
+  let mapBranchHintTimer = 0;
   const saveKey = 'candy-platformer-unlocked-level';
   const heroSaveKey = 'candy-platformer-selected-hero';
   const specialSaveKey = 'candy-platformer-special-progress';
@@ -71,6 +78,7 @@
   let unlockedLevel = 0;
   let hasActiveRun = false;
   let menuReturnState = 'map';
+  let menuStep = 'hero';
 
   const assets = {};
   const worldMapBackground = new Image();
@@ -81,7 +89,12 @@
     falls: 'icecream.png',
     woods: 'wafflewoods.png',
     courtyard: 'cake.png',
-    keep: 'kingdom.png'
+    keep: 'kingdom.png',
+    gummy: 'gummy.png',
+    jungle: 'jungle.png',
+    mallows: 'mallows.png',
+    lollipops: 'lollipops.png',
+    sky: 'background.png'
   };
   const backgroundImages = Object.fromEntries(
     Object.entries(backgroundFiles).map(([theme, file]) => {
@@ -100,7 +113,7 @@
   function updatePauseButton() {
     const compact = isMobileCanvas();
     if (gameState === 'gameover') {
-      pauseButton.textContent = compact ? 'Try' : 'Try Again';
+      pauseButton.textContent = compact ? 'Reset' : 'Reset All';
       pauseButton.setAttribute('aria-pressed', 'false');
       return;
     }
@@ -121,11 +134,20 @@
     heroButton.setAttribute('aria-label', selectedHero === 'boy' ? 'Switch hero, current hero is boy' : 'Switch hero, current hero is girl');
     menuBoyButton.classList.toggle('active', selectedHero === 'boy');
     menuGirlButton.classList.toggle('active', selectedHero === 'girl');
+    menuSelectedHeroText.textContent = selectedHero === 'boy' ? 'Hero: Boy' : 'Hero: Girl';
   }
 
   function updateMenuButtons() {
     const resumable = hasActiveRun && ['playing', 'map'].includes(menuReturnState);
     resumeButton.disabled = !resumable;
+  }
+
+  function updateMenuStep() {
+    const heroScreen = menuStep === 'hero';
+    menuHeroView.hidden = !heroScreen;
+    menuActionView.hidden = heroScreen;
+    menuOverlay.classList.toggle('menu-hero-step', heroScreen);
+    menuOverlay.classList.toggle('menu-action-step', !heroScreen);
   }
 
   function updateUiMode() {
@@ -139,6 +161,7 @@
     wrap.classList.toggle('end-mode', ['gameover', 'ending', 'escape'].includes(gameState));
     menuOverlay.hidden = gameState !== 'menu';
     updateMenuButtons();
+    updateMenuStep();
     soundButton.textContent = compact ? (soundOn ? 'SFX' : 'Off') : (mapMode ? (soundOn ? 'Sound' : 'Mute') : (soundOn ? 'Sound On' : 'Sound Off'));
     fullscreenButton.textContent = compact ? 'Full' : 'Fullscreen';
     updatePauseButton();
@@ -241,11 +264,37 @@
     updateHeroButton();
   }
 
+  function resetProgressAndReturnToMenu() {
+    unlockedLevel = 0;
+    specialProgress = LEVELS.map(level => Array((level.specials || []).length).fill(false));
+    rewardProgress = LEVELS.map(() => false);
+    medalProgress = Array.from({ length: ALL_STAGE_COUNT }, () => ({ swift: false, steady: false, specialist: false }));
+    try {
+      localStorage.removeItem(saveKey);
+      localStorage.removeItem(specialSaveKey);
+      localStorage.removeItem(rewardSaveKey);
+      localStorage.removeItem(medalSaveKey);
+    } catch {}
+    totalCandy = 0;
+    nextExtraLifeAt = 45;
+    lives = maxLives;
+    hasActiveRun = false;
+    menuReturnState = 'menu';
+    bootToGame();
+    sound('click');
+  }
+
   function openMenu() {
     if (gameState !== 'menu') menuReturnState = gameState;
     gameState = 'menu';
+    menuStep = 'hero';
     paused = false;
     updatePauseButton();
+    updateUiMode();
+  }
+
+  function openMenuActions() {
+    menuStep = 'actions';
     updateUiMode();
   }
 
@@ -266,29 +315,66 @@
   }
 
   function openWorldMap() {
-    const targetIndex = Math.max(0, Math.min(maxMapSelection(), mapLevelIndex));
+    const nodes = selectableMapNodes();
+    const targetNode = nodes.includes(currentMapNodeId()) ? currentMapNodeId() : (nodes[0] ?? 0);
+    const targetIndex = stageIndexForMapNode(targetNode);
     loadLevel(targetIndex);
     hasActiveRun = true;
     menuReturnState = 'map';
     gameState = 'map';
     paused = false;
     mapLevelIndex = targetIndex;
-    mapMarkerFromIndex = targetIndex;
-    mapMarkerToIndex = targetIndex;
+    mapMarkerFromIndex = targetNode;
+    mapMarkerToIndex = targetNode;
     mapMarkerProgress = 1;
     mapRevealTimer = 0;
     mapArrivalTimer = 0;
+    mapBranchHintTimer = 0;
+    updatePauseButton();
+    updateUiMode();
+    sound('click');
+  }
+
+  function firstVisibleBranchTarget() {
+    for (let i = 0; i <= unlockedLevel && i < WORLD_MAP_BRANCH_NODES.length; i++) {
+      if (rewardRouteUnlocked(i)) return branchNodeId(i);
+    }
+    for (let i = 0; i <= unlockedLevel && i < WORLD_MAP_BRANCH_NODES.length; i++) {
+      return i;
+    }
+    return 0;
+  }
+
+  function openSideStagesMap() {
+    const nodes = selectableMapNodes();
+    const targetNode = firstVisibleBranchTarget();
+    const selectedNode = nodes.includes(targetNode) ? targetNode : stageIndexForMapNode(targetNode);
+    const targetIndex = stageIndexForMapNode(selectedNode);
+    loadLevel(targetIndex);
+    hasActiveRun = true;
+    menuReturnState = 'map';
+    gameState = 'map';
+    paused = false;
+    mapLevelIndex = targetIndex;
+    mapMarkerFromIndex = selectedNode;
+    mapMarkerToIndex = selectedNode;
+    mapMarkerProgress = 1;
+    mapRevealTimer = 0;
+    mapArrivalTimer = 0;
+    mapBranchHintTimer = 220;
     updatePauseButton();
     updateUiMode();
     sound('click');
   }
 
   function selectMapNode(nextIndex) {
-    const clamped = Math.max(0, Math.min(maxMapSelection(), nextIndex));
-    if (clamped === mapLevelIndex) return;
-    mapLevelIndex = clamped;
+    const nodes = selectableMapNodes();
+    if (!nodes.includes(nextIndex)) return;
+    const nextStage = stageIndexForMapNode(nextIndex);
+    if (nextIndex === mapMarkerToIndex && nextStage === mapLevelIndex) return;
+    mapLevelIndex = nextStage;
     mapMarkerFromIndex = mapMarkerToIndex;
-    mapMarkerToIndex = clamped;
+    mapMarkerToIndex = nextIndex;
     mapMarkerProgress = 0;
     mapMoveCooldown = 12;
     sound('click');
@@ -433,7 +519,12 @@
     falls: { haze: 'rgba(255, 255, 255, 0.12)' },
     woods: { haze: 'rgba(255, 255, 255, 0.08)' },
     courtyard: { haze: 'rgba(255, 255, 255, 0.10)' },
-    keep: { haze: 'rgba(255, 255, 255, 0.08)' }
+    keep: { haze: 'rgba(255, 255, 255, 0.08)' },
+    gummy: { haze: 'rgba(255, 255, 255, 0.10)' },
+    jungle: { haze: 'rgba(255, 255, 255, 0.08)' },
+    mallows: { haze: 'rgba(255, 255, 255, 0.12)' },
+    lollipops: { haze: 'rgba(255, 255, 255, 0.10)' },
+    sky: { haze: 'rgba(255, 255, 255, 0.08)' }
   };
 
   const THEME_AMBIENCE = {
@@ -442,7 +533,12 @@
     falls: { colors: ['#fef9ff', '#89e4ff', '#c6f4ff'], count: 22, driftX: -0.12, driftY: 0.04, sparkle: 0.38, gumdrops: 0.06 },
     woods: { colors: ['#fff1c7', '#baf3aa', '#8fddff'], count: 18, driftX: -0.10, driftY: 0.025, sparkle: 0.24, gumdrops: 0.08 },
     courtyard: { colors: ['#fff0db', '#ffb0d4', '#fff5a4'], count: 18, driftX: -0.14, driftY: 0.018, sparkle: 0.32, gumdrops: 0.08 },
-    keep: { colors: ['#fef8e0', '#87f0cc', '#9bdfff'], count: 20, driftX: -0.16, driftY: 0.02, sparkle: 0.34, gumdrops: 0.05 }
+    keep: { colors: ['#fef8e0', '#87f0cc', '#9bdfff'], count: 20, driftX: -0.16, driftY: 0.02, sparkle: 0.34, gumdrops: 0.05 },
+    gummy: { colors: ['#ffe5f5', '#ff8dc5', '#8de4ff'], count: 20, driftX: -0.14, driftY: 0.024, sparkle: 0.28, gumdrops: 0.14 },
+    jungle: { colors: ['#fff3c9', '#baf3aa', '#8ddfff'], count: 18, driftX: -0.10, driftY: 0.022, sparkle: 0.22, gumdrops: 0.10 },
+    mallows: { colors: ['#fff8ef', '#ffd2ef', '#a9ebff'], count: 22, driftX: -0.12, driftY: 0.028, sparkle: 0.34, gumdrops: 0.08 },
+    lollipops: { colors: ['#fff3da', '#ff9ad1', '#8fd7ff'], count: 20, driftX: -0.16, driftY: 0.018, sparkle: 0.24, gumdrops: 0.12 },
+    sky: { colors: ['#fff9e5', '#ffd2ef', '#9de9ff'], count: 18, driftX: -0.18, driftY: 0.014, sparkle: 0.30, gumdrops: 0.06 }
   };
 
   const BACKGROUND_LAYOUTS = {
@@ -452,6 +548,11 @@
     woods: { scale: 1.03, focusX: 0.56, focusY: 0.53, mobileScale: 1.0, mobileFocusX: 0.54 },
     courtyard: { scale: 1.03, focusX: 0.62, focusY: 0.50, mobileScale: 1.0, mobileFocusX: 0.60 },
     keep: { scale: 1.04, focusX: 0.72, focusY: 0.47, mobileScale: 1.0, mobileFocusX: 0.70 },
+    gummy: { scale: 1.02, focusX: 0.36, focusY: 0.50, mobileScale: 1.0, mobileFocusX: 0.34 },
+    jungle: { scale: 1.04, focusX: 0.42, focusY: 0.50, mobileScale: 1.0, mobileFocusX: 0.40 },
+    mallows: { scale: 1.03, focusX: 0.46, focusY: 0.50, mobileScale: 1.0, mobileFocusX: 0.44 },
+    lollipops: { scale: 1.02, focusX: 0.34, focusY: 0.50, mobileScale: 1.0, mobileFocusX: 0.32 },
+    sky: { scale: 1.02, focusX: 0.50, focusY: 0.46, mobileScale: 1.0, mobileFocusX: 0.48 },
     worldMap: { scale: 1.0, focusX: 0.50, focusY: 0.52, mobileScale: 1.0, mobileFocusX: 0.50 }
   };
 
@@ -538,7 +639,7 @@
       goal: { x: 2150, y: 250 },
       decor: [D(694, 360, 'lollipop_swirl', { h: 84, alpha: 0.82 }), D(922, 236, 'candy_arch', { h: 66, alpha: 0.42 }), D(1964, 206, 'lollipop_green', { h: 72, alpha: 0.78 })],
       platforms: [
-        P(0, 452, 330, 80, 'icing'), P(250, 436, 300, 96, 'icing'), P(420, 392, 160, 22, 'cookie'),
+        P(0, 452, 360, 80, 'icing'), P(220, 436, 360, 96, 'icing'), P(520, 410, 120, 28, 'icing'), P(420, 392, 160, 22, 'cookie'),
         V(520, 386, 116, 18, 354, 398, 0.42, 'float'), V(640, 352, 150, 20, 320, 372, 0.55, 'float'), P(740, 274, 110, 18, 'cookie'), P(860, 228, 110, 18, 'icing'),
         P(850, 352, 240, 20, 'cookie'), P(1000, 262, 92, 18, 'cookie'), P(1130, 420, 220, 24, 'cookie'),
         B(1220, 402, 80), V(1332, 350, 112, 18, 318, 362, 0.48, 'float'), P(1452, 322, 126, 18, 'cookie'), P(1540, 338, 140, 20, 'cookie'),
@@ -718,6 +819,148 @@
 
   const BONUS_STAGES = [
     {
+      name: 'Gummy Grove',
+      theme: 'gummy',
+      chapter: 'Side Stage · Meadow Secret',
+      story: 'A softer gummy grove opens above the meadow, full of floating candy lifts and a hidden path that only appears after a perfect first world.',
+      tip: 'Side route: stay calm on the floating lifts, then bounce through the gummy climb to the high arch.',
+      success: 'You found the hidden gummy grove and rode the floating candy trail all the way through.',
+      worldW: 1880,
+      start: { x: 70, y: 392 },
+      goal: { x: 1740, y: 234 },
+      decor: [D(548, 260, 'lollipop_green', { h: 62, alpha: 0.76 }), D(1048, 214, 'candy_arch', { h: 60, alpha: 0.34 }), D(1600, 180, 'lollipop_pink', { h: 66, alpha: 0.72 })],
+      platforms: [
+        P(0, 452, 280, 80, 'icing'), P(320, 416, 160, 22, 'cookie'), V(510, 382, 110, 18, 348, 392, 0.48, 'float'),
+        V(660, 334, 116, 18, 302, 344, 0.52, 'float'), P(820, 292, 110, 18, 'icing'), B(962, 392, 82),
+        P(1080, 334, 150, 20, 'cookie'), V(1280, 300, 116, 18, 258, 312, 0.56, 'float'), P(1444, 248, 120, 18, 'icing'),
+        P(1584, 322, 140, 20, 'cookie'), P(1684, 420, 196, 80, 'icing')
+      ],
+      candies: [
+        C('bean_green', 148, 404), C('star_pink', 376, 382), C('bean_blue', 560, 344), C('star_blue', 718, 292),
+        C('bean_purple', 872, 254), C('star_purple', 1000, 354), C('bean_orange', 1168, 294), C('star_blue', 1326, 252),
+        C('bean_red', 1494, 208), C('star_pink', 1718, 280)
+      ],
+      specials: [],
+      enemies: [E(402, 382, 'gummy', 90), E(1110, 300, 'marsh', 80), E(1520, 286, 'beetle', 90)],
+      checkpoints: [{ x: 1020, y: 360, active: false }, { x: 1518, y: 268, active: false }],
+      npcs: [F(196, 420, 'jelly_green', 'This grove only opens for careful explorers.')],
+      signs: [HN(492, 388, 'Floating lifts rise in a slow rhythm.')],
+      wonders: [WZ(648, 286, 170, 120, 'The secret grove hangs above the main road like a quiet candy balcony.', { color: '#ff9ed0' })]
+    },
+    {
+      name: 'Jungle Jelly Run',
+      theme: 'jungle',
+      chapter: 'Side Stage · Pretzel Secret',
+      story: 'Past the forked pretzel roads, a jelly jungle shortcut twists through leaning planks and quick moving shelves.',
+      tip: 'Side route: use the tilting planks early, then chain them into the moving jungle shelves without rushing.',
+      success: 'You cut through the jelly jungle and handled the forked shortcut cleanly.',
+      worldW: 1960,
+      start: { x: 70, y: 392 },
+      goal: { x: 1822, y: 214 },
+      decor: [D(624, 244, 'lollipop_orange', { h: 62, alpha: 0.72 }), D(1198, 198, 'candy_arch', { h: 58, alpha: 0.34 }), D(1646, 170, 'lollipop_purple', { h: 68, alpha: 0.72 })],
+      platforms: [
+        P(0, 452, 290, 80, 'choco'), P(312, 416, 150, 22, 'cookie'), P(522, 378, 132, 20, 'tilt'), P(702, 334, 124, 18, 'wafer'),
+        M(852, 318, 126, 22, 852, 1012, 1.15), P(1038, 274, 126, 18, 'tilt'), P(1208, 226, 118, 18, 'wafer'),
+        P(1362, 338, 146, 20, 'tilt'), B(1542, 388, 82), M(1648, 282, 126, 22, 1648, 1810, 1.18), P(1782, 420, 178, 80, 'icing')
+      ],
+      candies: [
+        C('bean_red', 164, 404), C('star_purple', 390, 382), C('bean_green', 570, 336), C('star_blue', 734, 290),
+        C('bean_blue', 920, 280), C('star_pink', 1082, 238), C('bean_orange', 1248, 190), C('star_blue', 1418, 296),
+        C('bean_purple', 1570, 350), C('star_pink', 1718, 238)
+      ],
+      specials: [],
+      enemies: [E(396, 382, 'beetle', 90), E(1112, 240, 'gummy', 90), E(1450, 304, 'jaw', 70)],
+      checkpoints: [{ x: 1046, y: 296, active: false }, { x: 1590, y: 354, active: false }],
+      npcs: [F(208, 420, 'jelly_orange', 'The shortcut is shorter, but it never sits still.')],
+      signs: [HN(522, 346, 'Lean with the plank, then land centered.')],
+      wonders: [WZ(1112, 214, 180, 120, 'A hidden fork lifts you into the jungle canopy above the pretzel roads.', { color: '#baf3aa' })]
+    },
+    {
+      name: 'Marshmallow Driftway',
+      theme: 'mallows',
+      chapter: 'Side Stage · Falls Secret',
+      story: 'Beyond the cold cliffs, a marshmallow driftway glides through the mist on moving rafts and slick frosting shelves.',
+      tip: 'Side route: wait for the raft, keep centered, then ride the frosting slides into the upper mist.',
+      success: 'You crossed the marshmallow driftway and stayed steady through the raft and slide climb.',
+      worldW: 2040,
+      start: { x: 70, y: 392 },
+      goal: { x: 1890, y: 218 },
+      decor: [D(732, 244, 'candy_arch', { h: 60, alpha: 0.32 }), D(1330, 212, 'lollipop_sprinkle', { h: 68, alpha: 0.72 }), D(1732, 176, 'lollipop_green', { h: 66, alpha: 0.68 })],
+      platforms: [
+        P(0, 452, 280, 80, 'icing'), P(324, 420, 154, 22, 'cookie'), R(520, 444, 128, 520, 760, 1.02), P(702, 390, 120, 18, 'slide', { slideDir: 0.24 }),
+        P(874, 350, 138, 20, 'icing'), M(1056, 314, 128, 22, 1056, 1224, 1.14), P(1228, 258, 108, 18, 'slide', { slideDir: 0.28 }),
+        B(1392, 392, 80), P(1490, 318, 142, 20, 'icing'), R(1660, 344, 124, 1660, 1810, 1.0), P(1828, 420, 212, 80, 'icing')
+      ],
+      candies: [
+        C('bean_blue', 158, 404), C('star_pink', 382, 388), C('bean_green', 568, 396), C('star_blue', 760, 354),
+        C('bean_orange', 930, 312), C('star_purple', 1112, 276), C('bean_red', 1282, 220), C('star_blue', 1412, 350),
+        C('bean_purple', 1570, 282), C('star_pink', 1738, 294)
+      ],
+      specials: [],
+      enemies: [E(382, 386, 'gummy', 90), E(930, 316, 'marsh', 80), E(1532, 286, 'beetle', 90)],
+      checkpoints: [{ x: 1088, y: 336, active: false }, { x: 1600, y: 286, active: false }],
+      npcs: [F(194, 420, 'jelly_blue', 'These rafts drift slower than the cold falls below.')],
+      signs: [HN(522, 422, 'Stand still until the raft lines up.')],
+      wonders: [WZ(648, 366, 190, 120, 'The driftway glows through the mist like a marshmallow bridge in the sky.', { color: '#a9ebff' })]
+    },
+    {
+      name: 'Lantern Lollipop Loop',
+      theme: 'lollipops',
+      chapter: 'Side Stage · Woods Secret',
+      story: 'Deep past the waffle maze, a looping lantern trail circles through syrup pockets and bright lollipop arches.',
+      tip: 'Side route: move lightly through the syrup loop, then use the bounce lane to jump the last curve.',
+      success: 'You solved the looping lantern trail and kept your pace through the syrup pockets.',
+      worldW: 2140,
+      start: { x: 70, y: 392 },
+      goal: { x: 1980, y: 230 },
+      decor: [D(602, 250, 'lollipop_swirl', { h: 70, alpha: 0.76 }), D(1124, 218, 'candy_arch', { h: 60, alpha: 0.34 }), D(1760, 172, 'lollipop_green', { h: 72, alpha: 0.70 })],
+      platforms: [
+        P(0, 452, 292, 80, 'wafer'), P(324, 418, 146, 22, 'cookie'), P(520, 384, 132, 20, 'syrup'), P(700, 340, 130, 20, 'wafer'),
+        B(874, 392, 80), P(960, 314, 136, 20, 'syrup'), M(1134, 286, 126, 22, 1134, 1308, 1.1), P(1320, 238, 108, 18, 'wafer'),
+        P(1460, 342, 136, 20, 'syrup'), B(1644, 370, 82), P(1746, 296, 126, 20, 'wafer'), P(1928, 420, 212, 80, 'icing')
+      ],
+      candies: [
+        C('bean_green', 162, 404), C('star_blue', 390, 384), C('bean_purple', 560, 342), C('star_pink', 738, 302),
+        C('bean_orange', 892, 350), C('star_blue', 1010, 274), C('bean_red', 1184, 246), C('star_purple', 1348, 200),
+        C('bean_blue', 1512, 304), C('star_pink', 1786, 250)
+      ],
+      specials: [],
+      enemies: [E(384, 384, 'marsh', 90), E(1080, 246, 'gummy', 80), E(1542, 308, 'jaw', 70)],
+      checkpoints: [{ x: 1064, y: 306, active: false }, { x: 1700, y: 268, active: false }],
+      npcs: [F(210, 420, 'jelly_green', 'The lantern loop is safer if you keep a steady pace.')],
+      signs: [HN(514, 352, 'Syrup slows you. Use it before the bounce.')],
+      wonders: [WZ(1420, 300, 210, 120, 'The hidden loop opens into a ring of candy lanterns high above the woods.', { color: '#ff9ad1' })]
+    },
+    {
+      name: 'Sugar Skyway Sprint',
+      theme: 'sky',
+      chapter: 'Side Stage · Courtyard Secret',
+      story: 'A pale skyway peels away from the courtyard towers and turns into a fast secret sprint across lifts, gates, and open air.',
+      tip: 'Side route: time the lifts early, read the blink gates in the middle, then sprint the last sky bridge.',
+      success: 'You raced the sugar skyway and cleared the secret sprint above the courtyard roofs.',
+      worldW: 2240,
+      start: { x: 70, y: 392 },
+      goal: { x: 2080, y: 214 },
+      decor: [D(702, 244, 'candy_arch', { h: 62, alpha: 0.32 }), D(1366, 204, 'lollipop_pink', { h: 68, alpha: 0.72 }), D(1888, 166, 'candy_arch', { h: 68, alpha: 0.34 })],
+      platforms: [
+        P(0, 452, 290, 80, 'icing'), P(322, 418, 150, 22, 'cookie'), V(540, 360, 110, 18, 318, 366, 0.56, 'elevator'),
+        P(706, 324, 126, 18, 'icing'), TG(874, 258, 82, 90, 10, 64, 86), M(974, 298, 126, 22, 974, 1148, 1.1),
+        P(1176, 254, 112, 18, 'icing'), V(1328, 330, 112, 18, 278, 330, 0.62, 'elevator'), TG(1468, 238, 78, 92, 34, 64, 82),
+        B(1560, 380, 82), P(1680, 304, 136, 20, 'cookie'), TG(1860, 214, 80, 96, 58, 62, 82), P(1972, 420, 268, 80, 'icing')
+      ],
+      candies: [
+        C('bean_yellow', 162, 404), C('star_pink', 392, 382), C('bean_blue', 566, 318), C('star_blue', 730, 282),
+        C('bean_red', 916, 228), C('star_purple', 1040, 262), C('bean_green', 1214, 206), C('star_blue', 1370, 278),
+        C('bean_orange', 1518, 332), C('star_pink', 1728, 264), C('star_purple', 1904, 176)
+      ],
+      specials: [],
+      enemies: [E(392, 382, 'gummy', 90), E(1220, 214, 'beetle', 80), E(1700, 268, 'jaw', 70)],
+      checkpoints: [{ x: 1030, y: 280, active: false }, { x: 1730, y: 276, active: false }],
+      npcs: [F(202, 420, 'jelly_pink', 'This skyway is quick. Wait for the open beat.')],
+      signs: [HN(542, 336, 'Ride the lift, then do not miss the gate rhythm.')],
+      wonders: [WZ(1280, 250, 220, 120, 'The skyway opens far above the courtyard, with nothing below but candy clouds.', { color: '#9de9ff' })]
+    },
+    {
       name: 'Morning Star Run',
       theme: 'keep',
       chapter: 'Bonus Stage',
@@ -749,7 +992,8 @@
   ];
 
   const MAIN_LEVEL_COUNT = LEVELS.length;
-  const BONUS_STAGE_INDEX = MAIN_LEVEL_COUNT;
+  const SIDE_STAGE_COUNT = BONUS_STAGES.length - 1;
+  const BONUS_STAGE_INDEX = MAIN_LEVEL_COUNT + SIDE_STAGE_COUNT;
   const ALL_STAGE_COUNT = MAIN_LEVEL_COUNT + BONUS_STAGES.length;
 
   const maxHearts = 3;
@@ -795,6 +1039,7 @@
   let wonderText = '';
   let wonderTextTimer = 0;
   let runTookDamage = false;
+  let lastStageRewards = [];
 
   function levelSpecialCount(i) {
     return (LEVELS[i] && LEVELS[i].specials ? LEVELS[i].specials.length : 0);
@@ -833,6 +1078,14 @@
     return i >= MAIN_LEVEL_COUNT;
   }
 
+  function isBranchStageIndex(i) {
+    return i >= MAIN_LEVEL_COUNT && i < BONUS_STAGE_INDEX;
+  }
+
+  function isHiddenBonusStageIndex(i) {
+    return i === BONUS_STAGE_INDEX;
+  }
+
   function getStageData(i) {
     return isBonusStageIndex(i) ? BONUS_STAGES[i - MAIN_LEVEL_COUNT] : LEVELS[i];
   }
@@ -841,15 +1094,68 @@
     return allSpecialsComplete() ? BONUS_STAGE_INDEX : unlockedLevel;
   }
 
+  function branchStageIndex(levelIdx) {
+    return MAIN_LEVEL_COUNT + levelIdx;
+  }
+
+  function branchNodeId(levelIdx) {
+    return MAP_NODE_BRANCH_OFFSET + levelIdx;
+  }
+
+  function isBranchNodeId(id) {
+    return id >= MAP_NODE_BRANCH_OFFSET && id < MAP_NODE_BRANCH_OFFSET + MAIN_LEVEL_COUNT;
+  }
+
+  function isBonusNodeId(id) {
+    return id === MAP_NODE_BONUS;
+  }
+
+  function stageIndexForMapNode(id) {
+    if (isBranchNodeId(id)) return branchStageIndex(id - MAP_NODE_BRANCH_OFFSET);
+    if (isBonusNodeId(id)) return BONUS_STAGE_INDEX;
+    return id;
+  }
+
+  function selectableMapNodes() {
+    const nodes = [];
+    for (let i = 0; i <= unlockedLevel; i++) {
+      nodes.push(i);
+      if (rewardRouteUnlocked(i)) nodes.push(branchNodeId(i));
+    }
+    if (allSpecialsComplete()) nodes.push(MAP_NODE_BONUS);
+    return nodes;
+  }
+
+  function currentMapNodeId() {
+    if (isHiddenBonusStageIndex(mapLevelIndex)) return MAP_NODE_BONUS;
+    if (isBranchStageIndex(mapLevelIndex)) return branchNodeId(mapLevelIndex - MAIN_LEVEL_COUNT);
+    return mapLevelIndex;
+  }
+
+  function branchNodeLayoutKey(id) {
+    return id - MAP_NODE_BRANCH_OFFSET;
+  }
+
   function medalCount(i) {
     const row = medalProgress[i] || {};
     return (row.swift ? 1 : 0) + (row.steady ? 1 : 0) + (row.specialist ? 1 : 0);
+  }
+
+  function pushStageReward(text) {
+    if (!text || lastStageRewards.includes(text)) return;
+    lastStageRewards.push(text);
   }
 
   function grantMedal(i, key, color = '#fff27a') {
     if (!medalProgress[i]) medalProgress[i] = { swift: false, steady: false, specialist: false };
     if (medalProgress[i][key]) return;
     medalProgress[i][key] = true;
+    const medalLabels = {
+      swift: 'Swift medal earned',
+      steady: 'Steady medal earned',
+      specialist: isBonusStageIndex(i) ? 'Morning Star medal earned' : 'Specialist medal earned'
+    };
+    pushStageReward(medalLabels[key]);
     persistMedalProgress();
     burst(player.x + player.w / 2, player.y + 4, 12, color);
     sound('checkpoint');
@@ -907,6 +1213,12 @@
     rewardProgress[i] = true;
     persistRewardProgress();
     lives = Math.min(maxLives + 4, lives + 1);
+    pushStageReward('Extra life unlocked');
+    pushStageReward('Bonus stamp upgraded on the map');
+    pushStageReward('Hero flair unlocked for this world');
+    pushStageReward('Safe route opened');
+    if (i + 1 < MAIN_LEVEL_COUNT) pushStageReward(`Next world route opened: ${LEVELS[i + 1].name}`);
+    if (allSpecialsComplete()) pushStageReward('Hidden world unlocked: Morning Star Run');
     burst(player.x + player.w / 2, player.y, 26, '#fff27a');
     burst(player.x + player.w / 2, player.y - 18, 12, '#ff74ba');
     sound('life');
@@ -991,11 +1303,11 @@
   ];
 
   const WORLD_MAP_BRANCH_NODES = [
-    { levelIndex: 0, x: 198, y: 222, mobileX: 182, mobileY: 238, color: '#ffd86a', plate: '#fff8dd', icon: 'lollipop_green', label: 'Sky Lift' },
-    { levelIndex: 1, x: 352, y: 190, mobileX: 330, mobileY: 208, color: '#ffc48a', plate: '#fff1e1', icon: 'wafer_bar', label: 'Fork Run' },
-    { levelIndex: 2, x: 492, y: 226, mobileX: 468, mobileY: 246, color: '#9de9ff', plate: '#eefcff', icon: 'marshmallow_2', label: 'Raft Trail' },
-    { levelIndex: 3, x: 666, y: 182, mobileX: 634, mobileY: 198, color: '#d8f37b', plate: '#f7ffe3', icon: 'wafer_platform', label: 'Hidden Glen' },
-    { levelIndex: 4, x: 810, y: 168, mobileX: 776, mobileY: 184, color: '#ffb9de', plate: '#fff0f6', icon: 'gate_piece', label: 'Candle Run' }
+    { levelIndex: 0, x: 198, y: 222, mobileX: 182, mobileY: 238, color: '#ffd86a', plate: '#fff8dd', icon: 'lollipop_green', label: 'Grove' },
+    { levelIndex: 1, x: 352, y: 190, mobileX: 330, mobileY: 208, color: '#ffc48a', plate: '#fff1e1', icon: 'wafer_bar', label: 'Jungle' },
+    { levelIndex: 2, x: 492, y: 226, mobileX: 468, mobileY: 246, color: '#9de9ff', plate: '#eefcff', icon: 'marshmallow_2', label: 'Drift' },
+    { levelIndex: 3, x: 666, y: 182, mobileX: 634, mobileY: 198, color: '#d8f37b', plate: '#f7ffe3', icon: 'wafer_platform', label: 'Loop' },
+    { levelIndex: 4, x: 810, y: 168, mobileX: 776, mobileY: 184, color: '#ffb9de', plate: '#fff0f6', icon: 'gate_piece', label: 'Skyway' }
   ];
 
   const WORLD_MAP_BONUS_NODE = {
@@ -1007,6 +1319,9 @@
     label: 'Morning Star'
   };
 
+  const MAP_NODE_BRANCH_OFFSET = 100;
+  const MAP_NODE_BONUS = 200;
+
   menuButton.addEventListener('click', openMenu);
 
   heroButton.addEventListener('click', () => {
@@ -1015,11 +1330,14 @@
     sound('click');
   });
 
-  menuBoyButton.addEventListener('click', () => { setHero('boy'); sound('click'); });
-  menuGirlButton.addEventListener('click', () => { setHero('girl'); sound('click'); });
+  menuBoyButton.addEventListener('click', () => { setHero('boy'); openMenuActions(); sound('click'); });
+  menuGirlButton.addEventListener('click', () => { setHero('girl'); openMenuActions(); sound('click'); });
   resumeButton.addEventListener('click', resumeRun);
   startButton.addEventListener('click', startAdventure);
   mapButton.addEventListener('click', openWorldMap);
+  sideStagesButton.addEventListener('click', openSideStagesMap);
+  resetProgressButton.addEventListener('click', resetProgressAndReturnToMenu);
+  backToHeroButton.addEventListener('click', () => { menuStep = 'hero'; updateUiMode(); sound('click'); });
 
   soundButton.addEventListener('click', () => {
     soundOn = !soundOn;
@@ -1039,7 +1357,7 @@
       return;
     }
     if (gameState === 'gameover') {
-      resetRun(0);
+      resetProgressAndReturnToMenu();
       sound('click');
       return;
     }
@@ -1061,15 +1379,23 @@
   addEventListener('resize', updateUiMode);
 
   function enterWorldMap(nextLevel) {
-    const clamped = Math.max(0, Math.min(maxMapSelection(), nextLevel));
+    const nodes = selectableMapNodes();
+    const nextNode = isHiddenBonusStageIndex(nextLevel)
+      ? MAP_NODE_BONUS
+      : isBranchStageIndex(nextLevel)
+        ? branchNodeId(nextLevel - MAIN_LEVEL_COUNT)
+        : nextLevel;
+    const targetNode = nodes.includes(nextNode) ? nextNode : (nodes[0] ?? 0);
+    const clamped = stageIndexForMapNode(targetNode);
     menuReturnState = 'map';
     mapLevelIndex = clamped;
     mapPulse = 0;
     mapMoveCooldown = 0;
     mapRevealTimer = 42;
     mapArrivalTimer = 0;
-    mapMarkerFromIndex = Math.max(0, Math.min(maxMapSelection(), levelIndex));
-    mapMarkerToIndex = clamped;
+    mapBranchHintTimer = 0;
+    mapMarkerFromIndex = currentMapNodeId();
+    mapMarkerToIndex = targetNode;
     mapMarkerProgress = 0;
     winTimer = 0;
     paused = false;
@@ -1103,6 +1429,7 @@
     loadLevel(0);
     hasActiveRun = false;
     menuReturnState = 'menu';
+    menuStep = 'hero';
     gameState = 'menu';
     paused = false;
     mapLevelIndex = 0;
@@ -1112,6 +1439,7 @@
     mapMoveCooldown = 0;
     mapRevealTimer = 0;
     mapArrivalTimer = 0;
+    mapBranchHintTimer = 0;
     updatePauseButton();
     updateUiMode();
   }
@@ -1119,7 +1447,10 @@
   addEventListener('keydown', e => {
     if (['ArrowLeft','ArrowRight','ArrowUp','Space','KeyA','KeyD','KeyW','KeyR','Enter'].includes(e.code)) e.preventDefault();
     keys.add(e.code);
-    if (gameState === 'menu' && e.code === 'Enter') startAdventure();
+    if (gameState === 'menu' && e.code === 'Enter') {
+      if (menuStep === 'hero') openMenuActions();
+      else startAdventure();
+    }
     if (gameState === 'playing' && ['ArrowUp','Space','KeyW'].includes(e.code)) jumpPressed = true;
     if (e.code === 'KeyR' && gameState === 'playing') loadLevel(levelIndex);
     if (e.code === 'KeyP' && gameState === 'playing') { paused = !paused; updatePauseButton(); }
@@ -1131,7 +1462,7 @@
       updateUiMode();
     }
     if (e.code === 'Enter' && gameState === 'ending') resetRun(Math.min(levelIndex, unlockedLevel));
-    if (e.code === 'Enter' && gameState === 'gameover') resetRun(0);
+    if (e.code === 'Enter' && gameState === 'gameover') resetProgressAndReturnToMenu();
   });
   addEventListener('keyup', e => keys.delete(e.code));
 
@@ -1157,7 +1488,7 @@
       return;
     }
     if (gameState === 'gameover') {
-      resetRun(0);
+      resetProgressAndReturnToMenu();
       return;
     }
     if (gameState === 'ending') {
@@ -1170,6 +1501,7 @@
   function loadLevel(i) {
     levelIndex = i;
     menuReturnState = 'playing';
+    lastStageRewards = [];
     level = getStageData(i);
     levelDecor = level.decor.map(d => ({ ...d }));
     friendlyNpcs = (level.npcs || []).map(npc => ({ ...npc, bob: Math.random() * Math.PI * 2 }));
@@ -1230,6 +1562,7 @@
     while (totalCandy >= nextExtraLifeAt) {
       lives = Math.min(maxLives + 4, lives + 1);
       nextExtraLifeAt += 45;
+      pushStageReward('Extra life from candy total');
       burst(player.x + player.w / 2, player.y, 28, '#fff27a');
       sound('life');
     }
@@ -1293,6 +1626,7 @@
     updateAmbientParticles();
     if (gameState === 'map') {
       mapPulse += 0.05;
+      if (mapBranchHintTimer > 0) mapBranchHintTimer--;
       if (mapArrivalTimer > 0) mapArrivalTimer--;
       if (mapMarkerProgress < 1) {
         mapMarkerProgress = Math.min(1, mapMarkerProgress + 0.08);
@@ -1309,10 +1643,13 @@
       const mapLeft = keys.has('ArrowLeft') || keys.has('KeyA') || touch.left;
       const mapRight = keys.has('ArrowRight') || keys.has('KeyD') || touch.right;
       if (mapMoveCooldown === 0 && mapMarkerProgress >= 1) {
-        if (mapLeft && mapLevelIndex > 0) {
-          selectMapNode(mapLevelIndex - 1);
-        } else if (mapRight && mapLevelIndex < maxMapSelection()) {
-          selectMapNode(mapLevelIndex + 1);
+        const nodes = selectableMapNodes();
+        const currentNode = mapMarkerToIndex;
+        const currentIdx = Math.max(0, nodes.indexOf(currentNode));
+        if (mapLeft && currentIdx > 0) {
+          selectMapNode(nodes[currentIdx - 1]);
+        } else if (mapRight && currentIdx < nodes.length - 1) {
+          selectMapNode(nodes[currentIdx + 1]);
         }
       }
       return;
@@ -1339,8 +1676,10 @@
       winTimer++;
       player.anim += 0.11;
       if (winTimer === 120) {
-        if (isBonusStageIndex(levelIndex)) {
+        if (isHiddenBonusStageIndex(levelIndex)) {
           enterWorldMap(BONUS_STAGE_INDEX);
+        } else if (isBranchStageIndex(levelIndex)) {
+          enterWorldMap(levelIndex);
         } else if (levelIndex < MAIN_LEVEL_COUNT - 1) {
           setUnlockedLevel(levelIndex + 1);
           enterWorldMap(levelIndex + 1);
@@ -2124,14 +2463,16 @@
     const showHud = gameState === 'playing';
     const levelSpecialTotal = levelSpecialCount(levelIndex);
     const levelSpecialFound = collectedSpecialCount(levelIndex);
+    const sideStage = isBranchStageIndex(levelIndex);
+    const hiddenBonus = isHiddenBonusStageIndex(levelIndex);
     hudLevelName.textContent = level.name;
-    hudLevelValue.textContent = isBonusStageIndex(levelIndex) ? 'Bonus' : `${levelIndex + 1}/${MAIN_LEVEL_COUNT}`;
+    hudLevelValue.textContent = hiddenBonus ? 'Bonus' : sideStage ? 'Side' : `${levelIndex + 1}/${MAIN_LEVEL_COUNT}`;
     hudCandyValue.textContent = String(score);
     hudTotalValue.textContent = String(totalCandy + score);
     hudHeartsValue.textContent = `${Math.max(0, player.hearts)}/${maxHearts}`;
     hudLivesValue.textContent = String(lives);
     hudTimeValue.textContent = formatLevelTimer(levelTimer);
-    hudSpecialsValue.textContent = `${levelSpecialFound}/${levelSpecialTotal}`;
+    hudSpecialsValue.textContent = levelSpecialTotal > 0 ? `${levelSpecialFound}/${levelSpecialTotal}` : '—';
     hudTipText.textContent = level.tip;
     hudLifeText.textContent = `Next extra life at ${nextExtraLifeAt} total candy`;
     hudChapterText.textContent = level.chapter;
@@ -2228,7 +2569,11 @@
       x: compact ? (WORLD_MAP_BONUS_NODE.mobileX ?? WORLD_MAP_BONUS_NODE.x) : WORLD_MAP_BONUS_NODE.x,
       y: compact ? (WORLD_MAP_BONUS_NODE.mobileY ?? WORLD_MAP_BONUS_NODE.y) : WORLD_MAP_BONUS_NODE.y
     };
-    const pointForMapIndex = index => (index === BONUS_STAGE_INDEX ? bonusNode : nodeLayout[index]);
+    const pointForMapIndex = index => {
+      if (isBonusNodeId(index) || index === BONUS_STAGE_INDEX) return bonusNode;
+      if (isBranchNodeId(index)) return branchLayout[branchNodeLayoutKey(index)];
+      return nodeLayout[index];
+    };
 
     ctx.save();
     if (worldMapBackground.complete && worldMapBackground.naturalWidth > 0) {
@@ -2256,9 +2601,9 @@
     ctx.stroke();
 
     for (const branch of branchLayout) {
-      if (!rewardRouteUnlocked(branch.levelIndex)) continue;
+      if (branch.levelIndex > unlockedLevel) continue;
       const main = nodeLayout[branch.levelIndex];
-      ctx.strokeStyle = 'rgba(255,240,170,.72)';
+      ctx.strokeStyle = rewardRouteUnlocked(branch.levelIndex) ? 'rgba(255,240,170,.72)' : 'rgba(255,255,255,.28)';
       ctx.lineWidth = compact ? 5 : 6;
       ctx.beginPath();
       ctx.moveTo(main.x, main.y);
@@ -2280,7 +2625,7 @@
       const pos = nodeLayout[index];
       const unlocked = index <= unlockedLevel;
       const completed = index < unlockedLevel;
-      const isNext = index === mapLevelIndex;
+      const isNext = index === mapMarkerToIndex;
       const specialTotal = levelSpecialCount(index);
       const specialFound = collectedSpecialCount(index);
       const allSpecials = specialTotal > 0 && specialFound === specialTotal;
@@ -2364,23 +2709,48 @@
     });
 
     for (const branch of branchLayout) {
-      if (!rewardRouteUnlocked(branch.levelIndex)) continue;
+      if (branch.levelIndex > unlockedLevel) continue;
       const worldDone = hasAllSpecialsInLevel(branch.levelIndex);
+      const branchUnlocked = rewardRouteUnlocked(branch.levelIndex);
+      const branchSelected = mapMarkerToIndex === branchNodeId(branch.levelIndex);
+      const branchHint = mapBranchHintTimer > 0;
       const plateW = compact ? 48 : 54;
       const plateH = compact ? 38 : 42;
-      roundRect(branch.x - plateW / 2, branch.y - plateH / 2, plateW, plateH, compact ? 15 : 17, branch.plate, 'rgba(90,46,32,.10)');
-      ctx.fillStyle = branch.color;
+      roundRect(branch.x - plateW / 2, branch.y - plateH / 2, plateW, plateH, compact ? 15 : 17, branchUnlocked ? branch.plate : 'rgba(240,234,238,.78)', 'rgba(90,46,32,.10)');
+      ctx.fillStyle = branchUnlocked ? branch.color : '#d8c8d0';
       ctx.beginPath();
       ctx.arc(branch.x, branch.y - 4, compact ? 12 : 14, 0, Math.PI * 2);
       ctx.fill();
-      drawImageCentered(assets[branch.icon], branch.x, branch.y - 5, compact ? 15 : 18);
+      if (branchHint) {
+        ctx.save();
+        ctx.strokeStyle = branchUnlocked ? 'rgba(255,242,122,.84)' : 'rgba(255,255,255,.62)';
+        ctx.lineWidth = compact ? 3 : 4;
+        ctx.beginPath();
+        ctx.arc(branch.x, branch.y - 4, (compact ? 17 : 20) + Math.sin(mapPulse * 2 + branch.levelIndex) * (compact ? 1.4 : 1.8), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+      if (branchSelected && branchUnlocked) {
+        ctx.strokeStyle = '#fff27a';
+        ctx.lineWidth = compact ? 4 : 5;
+        ctx.beginPath();
+        ctx.arc(branch.x, branch.y - 4, compact ? 17 + Math.sin(mapPulse) * 1.2 : 20 + Math.sin(mapPulse) * 1.6, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      if (branchUnlocked) {
+        drawImageCentered(assets[branch.icon], branch.x, branch.y - 5, compact ? 15 : 18);
+      } else {
+        ctx.fillStyle = '#8f7f88';
+        ctx.font = compact ? '900 8px system-ui' : '900 9px system-ui';
+        ctx.fillText('LOCK', branch.x, branch.y - 1);
+      }
       roundRect(branch.x - (compact ? 26 : 30), branch.y + (compact ? 14 : 16), compact ? 52 : 60, compact ? 12 : 13, 6, 'rgba(255,248,239,.76)', 'rgba(90,46,32,.08)');
       ctx.fillStyle = '#5a2e20';
       ctx.font = compact ? '800 7px system-ui' : '800 8px system-ui';
       ctx.fillText(branch.label, branch.x, branch.y + (compact ? 22 : 25));
-      ctx.fillStyle = worldDone ? '#d83787' : '#a45627';
+      ctx.fillStyle = !branchUnlocked ? '#8f7f88' : worldDone ? '#d83787' : '#a45627';
       ctx.font = compact ? '900 6px system-ui' : '900 7px system-ui';
-      ctx.fillText(worldDone ? 'OPEN' : 'ROUTE', branch.x, branch.y + (compact ? 31 : 35));
+      ctx.fillText(!branchUnlocked ? 'LOCK' : worldDone ? 'OPEN' : 'STAGE', branch.x, branch.y + (compact ? 31 : 35));
     }
 
     if (globalAllSpecials) {
@@ -2430,13 +2800,16 @@
     }
 
     if (compact) {
-      roundRect(18, H - 58, 210, 40, 12, 'rgba(255,248,239,.62)', '#ffffff');
+      roundRect(18, H - 72, 220, 54, 12, 'rgba(255,248,239,.66)', '#ffffff');
       ctx.fillStyle = '#5a2e20';
       ctx.font = '800 10px system-ui';
-      ctx.fillText(getStageData(mapLevelIndex).name, 123, H - 40);
+      ctx.fillText(getStageData(mapLevelIndex).name, 128, H - 52);
       ctx.font = '800 9px system-ui';
-      const routeText = mapLevelIndex === BONUS_STAGE_INDEX ? 'Hidden world open' : rewardRouteUnlocked(mapLevelIndex) ? 'Safe route open' : `Challenge route live`;
-      ctx.fillText(routeText, 123, H - 26);
+      const routeText = isBonusNodeId(mapMarkerToIndex) ? 'Hidden world open' : isBranchNodeId(mapMarkerToIndex) ? 'Side stage ready' : rewardRouteUnlocked(mapLevelIndex) ? 'Side stage open' : 'Main trail active';
+      ctx.fillText(routeText, 128, H - 38);
+      ctx.font = '700 8px system-ui';
+      ctx.fillStyle = '#7a3c65';
+      ctx.fillText(mapBranchHintTimer > 0 ? 'Side stages are pulsing on the map' : 'LOCK = find all specials in that world', 128, H - 24);
       if (globalAllSpecials) {
         roundRect(W - 182, H - 54, 160, 34, 12, 'rgba(255,248,239,.72)', '#ffffff');
         ctx.fillStyle = '#d83787';
@@ -2460,6 +2833,13 @@
       ctx.fillText('Challenge Route Active', W - 144, 42);
     }
 
+    if (!compact) {
+      roundRect(18, H - 42, 258, 26, 12, 'rgba(255,248,239,.68)', '#ffffff');
+      ctx.fillStyle = '#7a3c65';
+      ctx.font = '800 11px system-ui';
+      ctx.fillText(mapBranchHintTimer > 0 ? 'Side stages are highlighted on the map.' : 'LOCK side stages by finding all specials in that world.', 147, H - 25);
+    }
+
     if (mapRevealTimer > 0) {
       roundRect(W / 2 - (compact ? 74 : 86), H - (compact ? 42 : 48), compact ? 148 : 172, 24, 12, 'rgba(255,248,239,.66)', '#ffffff');
       ctx.fillStyle = '#d83787';
@@ -2472,52 +2852,57 @@
 
   function drawWin() {
     const compact = isMobileCanvas();
-    const bonusStage = isBonusStageIndex(levelIndex);
+    const bonusStage = isHiddenBonusStageIndex(levelIndex);
+    const sideStage = isBranchStageIndex(levelIndex);
+    const rewardLines = lastStageRewards.length ? lastStageRewards.slice(0, compact ? 3 : 5) : ['No new rewards this run.'];
+    const clearTitle = bonusStage ? 'Bonus Clear!' : sideStage ? 'Side Stage Clear!' : levelIndex < MAIN_LEVEL_COUNT - 1 ? 'Chapter Clear!' : 'The Way Home Is Open!';
+    const clearLead = bonusStage
+      ? 'You found the hidden world and brought the Morning Star safely through.'
+      : sideStage
+        ? level.success
+      : levelIndex < MAIN_LEVEL_COUNT - 1
+        ? level.success
+        : 'Hold steady. The final scene is next.';
     if (compact) {
-      roundRect(90, H - 164, 780, 120, 24, 'rgba(255,245,252,.92)', '#ffffff');
+      roundRect(84, H - 228, 792, 184, 24, 'rgba(255,245,252,.92)', '#ffffff');
       ctx.textAlign = 'center';
       ctx.fillStyle = '#d83787';
       ctx.font = '900 24px system-ui';
-      ctx.fillText(bonusStage ? 'Bonus Clear!' : levelIndex < MAIN_LEVEL_COUNT - 1 ? 'Chapter Clear!' : 'The Way Home Is Open!', W / 2, H - 126);
+      ctx.fillText(clearTitle, W / 2, H - 188);
       ctx.fillStyle = '#5a2e20';
       ctx.font = '800 14px system-ui';
-      ctx.fillText(bonusStage ? 'You found the hidden world and brought the Morning Star safely through.' : levelIndex < MAIN_LEVEL_COUNT - 1 ? level.success : 'Hold steady. The final scene is next.', W / 2, H - 102, 700);
+      ctx.fillText(clearLead, W / 2, H - 164, 704);
       ctx.font = '700 12px system-ui';
-      ctx.fillText(`Specials found ${collectedSpecialCount(levelIndex)}/${levelSpecialCount(levelIndex)}`, W / 2, H - 80);
-      ctx.fillText('Tap Go to continue.', W / 2, H - 62);
+      ctx.fillText(`Specials ${collectedSpecialCount(levelIndex)}/${levelSpecialCount(levelIndex)}  ·  Time left ${formatLevelTimer(levelTimer)}`, W / 2, H - 140);
+      ctx.fillStyle = '#d83787';
+      ctx.font = '900 11px system-ui';
+      ctx.fillText('Rewards', W / 2, H - 118);
+      ctx.fillStyle = '#5a2e20';
+      ctx.font = '700 11px system-ui';
+      rewardLines.forEach((line, idx) => ctx.fillText(`• ${line}`, W / 2, H - 96 + idx * 14, 704));
+      ctx.font = '700 12px system-ui';
+      ctx.fillText('Tap Go to continue.', W / 2, H - 42);
       ctx.textAlign = 'start';
       return;
     }
-    roundRect(176, 140, 608, 250, 28, 'rgba(255,245,252,.96)', '#ffffff');
+    roundRect(160, 112, 640, 364, 28, 'rgba(255,245,252,.96)', '#ffffff');
     ctx.textAlign = 'center';
     ctx.fillStyle = '#d83787';
     ctx.font = compact ? '900 34px system-ui' : '900 42px system-ui';
-    if (bonusStage) {
-      ctx.fillText('Bonus Clear!', W / 2, compact ? 196 : 214);
-      ctx.fillStyle = '#5a2e20';
-      ctx.font = compact ? '800 20px system-ui' : '800 22px system-ui';
-      ctx.fillText('You cleared the hidden Morning Star Run.', W / 2, compact ? 240 : 258);
-      ctx.font = compact ? '700 17px system-ui' : '700 18px system-ui';
-      ctx.fillText('The secret world is now part of your replay path on the map.', W / 2, compact ? 286 : 304, compact ? 700 : 520);
-      ctx.fillText('A bonus medal has been added to the hidden world.', W / 2, compact ? 320 : 334);
-      ctx.fillText('The map is reopening...', W / 2, compact ? 350 : 362);
-    } else if (levelIndex < MAIN_LEVEL_COUNT - 1) {
-      ctx.fillText('Chapter Clear!', W / 2, compact ? 196 : 214);
-      ctx.fillStyle = '#5a2e20';
-      ctx.font = compact ? '800 20px system-ui' : '800 22px system-ui';
-      ctx.fillText(`You cleared ${level.name}.`, W / 2, compact ? 240 : 258);
-      ctx.font = compact ? '700 17px system-ui' : '700 18px system-ui';
-      ctx.fillText(level.success, W / 2, compact ? 286 : 304, compact ? 700 : 520);
-      ctx.fillText(`Specials found ${collectedSpecialCount(levelIndex)}/${levelSpecialCount(levelIndex)}`, W / 2, compact ? 320 : 334);
-      ctx.fillText('The next candy trail is opening...', W / 2, compact ? 350 : 362);
-    } else {
-      ctx.fillText('The Way Home Is Open!', W / 2, compact ? 196 : 214);
-      ctx.fillStyle = '#5a2e20';
-      ctx.font = compact ? '800 20px system-ui' : '800 22px system-ui';
-      ctx.fillText('The way home is finally within reach.', W / 2, compact ? 240 : 258);
-      ctx.font = compact ? '700 17px system-ui' : '700 18px system-ui';
-      ctx.fillText('Hold steady. The final scene is next.', W / 2, compact ? 286 : 304);
-    }
+    ctx.fillText(clearTitle, W / 2, 188);
+    ctx.fillStyle = '#5a2e20';
+    ctx.font = '800 22px system-ui';
+    ctx.fillText(bonusStage ? 'You cleared the hidden Morning Star Run.' : `You cleared ${level.name}.`, W / 2, 230);
+    ctx.font = '700 18px system-ui';
+    ctx.fillText(clearLead, W / 2, 270, 540);
+    ctx.font = '700 16px system-ui';
+    ctx.fillText(`Specials found ${collectedSpecialCount(levelIndex)}/${levelSpecialCount(levelIndex)}  ·  Time left ${formatLevelTimer(levelTimer)}`, W / 2, 304);
+    ctx.fillStyle = '#d83787';
+    ctx.font = '900 18px system-ui';
+    ctx.fillText('Rewards Unlocked', W / 2, 338);
+    ctx.fillStyle = '#5a2e20';
+    ctx.font = '700 17px system-ui';
+    rewardLines.forEach((line, idx) => ctx.fillText(`• ${line}`, W / 2, 368 + idx * 22, 520));
     ctx.textAlign = 'start';
   }
 
@@ -2689,7 +3074,7 @@
       ctx.fillText('Out Of Lives', W / 2, H - 142);
       ctx.fillStyle = '#5a2e20';
       ctx.font = '800 14px system-ui';
-      ctx.fillText('Tap Try to restart from Chapter 1.', W / 2, H - 106);
+      ctx.fillText('Tap Reset to lock the world and start fresh.', W / 2, H - 106);
       ctx.textAlign = 'start';
       return;
     }
@@ -2702,7 +3087,7 @@
     ctx.font = compact ? '800 20px system-ui' : '800 22px system-ui';
     ctx.fillText('The candy world pushed back this time.', W / 2, compact ? 240 : 258);
     ctx.font = compact ? '700 17px system-ui' : '700 18px system-ui';
-    ctx.fillText('Press Enter to start a fresh run from Chapter 1.', W / 2, compact ? 286 : 304);
+    ctx.fillText('Press Enter or tap Reset All to relock the worlds and start fresh.', W / 2, compact ? 286 : 304);
     ctx.textAlign = 'start';
   }
 
