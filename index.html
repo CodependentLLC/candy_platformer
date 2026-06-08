@@ -48,23 +48,36 @@
 
         <section id="menuOverlay" class="menu-overlay" aria-label="Main menu">
           <div class="menu-card">
-            <p class="menu-kicker">Candy Platform Adventure</p>
-            <div class="menu-door" aria-hidden="true"></div>
-            <h1>Candy Quest Kids</h1>
-            <p class="menu-copy">Pick a hero, continue your run, or head to the candy world map.</p>
-            <div class="menu-story">
-              <span>Soft platforms</span>
-              <span>Friendly candy worlds</span>
-              <span>Play at your pace</span>
+            <div id="menuHeroView" class="menu-view menu-hero-view">
+              <p class="menu-kicker">Candy Platform Adventure</p>
+              <div class="menu-door" aria-hidden="true"></div>
+              <h1>Candy Quest Kids</h1>
+              <p class="menu-copy">Choose a hero first. The next screen lets you start, open the world map, or jump to side stages.</p>
+              <div class="menu-story">
+                <span>Soft platforms</span>
+                <span>Friendly candy worlds</span>
+                <span>Play at your pace</span>
+              </div>
+              <div class="menu-heroes" role="group" aria-label="Choose hero">
+                <button id="menuBoyButton" class="menu-hero" type="button">Boy</button>
+                <button id="menuGirlButton" class="menu-hero" type="button">Girl</button>
+              </div>
+              <p class="menu-step-note">Tap a hero to continue.</p>
             </div>
-            <div class="menu-heroes" role="group" aria-label="Choose hero">
-              <button id="menuBoyButton" class="menu-hero" type="button">Boy</button>
-              <button id="menuGirlButton" class="menu-hero" type="button">Girl</button>
-            </div>
-            <div class="menu-actions">
-              <button id="resumeButton" class="secondary" type="button">Resume</button>
-              <button id="startButton" type="button">Start Adventure</button>
-              <button id="mapButton" class="secondary" type="button">World Map</button>
+
+            <div id="menuActionView" class="menu-view menu-action-view" hidden>
+              <p class="menu-kicker">Choose Your Path</p>
+              <h2 class="menu-subtitle" id="menuSelectedHeroText">Hero: Boy</h2>
+              <p class="menu-copy">Pick what to do next.</p>
+              <p class="menu-bonus-note">Side stages unlock at 3/3 specials.</p>
+              <div class="menu-actions">
+                <button id="resumeButton" class="secondary" type="button">Resume</button>
+                <button id="startButton" type="button">Start Adventure</button>
+                <button id="mapButton" class="secondary" type="button">World Map</button>
+                <button id="sideStagesButton" class="secondary" type="button">Side Stages</button>
+                <button id="resetProgressButton" class="secondary danger" type="button">Reset Progress</button>
+                <button id="backToHeroButton" class="secondary" type="button">Back</button>
+              </div>
             </div>
           </div>
         </section>
