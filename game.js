@@ -1120,6 +1120,25 @@
     return false;
   }
 
+  function enemyStandingOnPlatform(enemy, platform, previousX, previousY) {
+    if (!enemy.alive) return false;
+    const enemyBottom = enemy.y + enemy.h;
+    const overlapAtPreviousX = enemy.x + enemy.w > previousX + 5 && enemy.x < previousX + platform.w - 5;
+    const platformTopMin = Math.min(previousY, platform.y);
+    const platformTopMax = Math.max(previousY, platform.y);
+    return overlapAtPreviousX && enemyBottom >= platformTopMin - 4 && enemyBottom <= platformTopMax + 8;
+  }
+
+  function carrySupportedEnemies(platform, dx, dy, previousX, previousY) {
+    if (dx === 0 && dy === 0) return;
+    for (const enemy of enemies) {
+      if (!enemyStandingOnPlatform(enemy, platform, previousX, previousY)) continue;
+      enemy.x += dx;
+      enemy.y += dy;
+      enemy.y = platform.y - enemy.h;
+    }
+  }
+
   function snapSpawnToGround() {
     const feetX = player.x + player.w / 2;
     let landingY = null;
@@ -1201,7 +1220,14 @@
         if (isHiddenBonusStageIndex(levelIndex)) {
           enterWorldMap(BONUS_STAGE_INDEX);
         } else if (isBranchStageIndex(levelIndex)) {
-          enterWorldMap(levelIndex);
+          const branchParentIndex = levelIndex - MAIN_LEVEL_COUNT;
+          const nextMainIndex = branchParentIndex + 1;
+          if (nextMainIndex < MAIN_LEVEL_COUNT) {
+            setUnlockedLevel(nextMainIndex);
+            enterWorldMap(nextMainIndex);
+          } else {
+            enterWorldMap(levelIndex);
+          }
         } else if (levelIndex < MAIN_LEVEL_COUNT - 1) {
           setUnlockedLevel(levelIndex + 1);
           enterWorldMap(levelIndex + 1);
@@ -1227,6 +1253,8 @@
     const speedBoost = inRush ? 1.38 : 1;
 
     for (const p of platforms) {
+      const previousX = p.x;
+      const previousY = p.y;
       if (!p.alive && p.respawnTimer > 0) {
         p.respawnTimer--;
         if (p.respawnTimer <= 0) {
@@ -1247,6 +1275,9 @@
           p.dir *= -1;
           p.y = Math.max(p.minY, Math.min(p.maxY, p.y));
         }
+      }
+      if (p.alive && (p.kind === 'moving' || p.kind === 'raft' || p.kind === 'float' || p.kind === 'elevator')) {
+        carrySupportedEnemies(p, p.x - previousX, p.y - previousY, previousX, previousY);
       }
       if (p.kind === 'blinkGate') {
         const cycle = (p.openFor || 80) + (p.closedFor || 90);
@@ -2130,6 +2161,17 @@
       ctx.beginPath();
       ctx.moveTo(main.x, main.y);
       ctx.quadraticCurveTo((main.x + branch.x) / 2, Math.min(main.y, branch.y) - (compact ? 18 : 22), branch.x, branch.y);
+      ctx.stroke();
+    }
+
+    for (const branch of branchLayout) {
+      const nextMain = nodeLayout[branch.levelIndex + 1];
+      if (!nextMain || branch.levelIndex + 1 > unlockedLevel || !rewardRouteUnlocked(branch.levelIndex)) continue;
+      ctx.strokeStyle = 'rgba(255,240,170,.58)';
+      ctx.lineWidth = compact ? 4 : 5;
+      ctx.beginPath();
+      ctx.moveTo(branch.x, branch.y);
+      ctx.quadraticCurveTo((branch.x + nextMain.x) / 2, Math.min(branch.y, nextMain.y) - (compact ? 14 : 18), nextMain.x, nextMain.y);
       ctx.stroke();
     }
 

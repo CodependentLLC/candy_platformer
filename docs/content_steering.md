@@ -89,6 +89,24 @@ Existing or compatible names:
 - Taffy Tower
 - Cupcake Crossing
 
+For future multi-world expansion, world names should sound like broad candy regions rather than single obstacles. Level and side-stage names can be more specific.
+
+Good world-style names:
+
+- Candy Meadow
+- Waffle Woods
+- Frosting Falls
+- Cookie Coast
+- Jellybean Junction
+- Cupcake Kingdom
+
+Good level-style names:
+
+- Lollipop Meadow
+- Gummy Grove
+- Sprinkle Bridge
+- Taffy Tower
+
 ## Mechanics naming
 
 Keep names readable and kid-friendly.
@@ -192,6 +210,23 @@ Preferred:
 - Play Again
 
 Clever labels are okay only when the meaning remains obvious.
+
+## Unlock copy
+
+World-map and progression text should make unlock requirements clear without sounding punitive.
+
+Good:
+
+- `Unlock side stages by finding all specials in that world.`
+- `Next world unlocked!`
+- `Complete the main path to open the next world.`
+- `Side stage ready.`
+
+Avoid:
+
+- `LOCK side stages by finding all specials.`
+- `You must grind every secret.`
+- `Only perfect runs unlock the next world.`
 
 ## Inclusive character guidance
 

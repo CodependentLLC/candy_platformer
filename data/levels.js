@@ -14,7 +14,7 @@
       goal: { x: 2150, y: 250 },
       decor: [D(694, 360, 'lollipop_swirl', { h: 84, alpha: 0.82 }), D(922, 236, 'candy_arch', { h: 66, alpha: 0.42 }), D(1964, 206, 'lollipop_green', { h: 72, alpha: 0.78 })],
       platforms: [
-        P(0, 452, 360, 80, 'icing'), P(220, 436, 360, 96, 'icing'), P(520, 410, 120, 28, 'icing'), P(420, 392, 160, 22, 'cookie'),
+        P(0, 452, 360, 80, 'icing'), P(220, 452, 360, 80, 'icing'), P(520, 410, 120, 28, 'icing'), P(640, 452, 210, 80, 'icing'), P(860, 420, 100, 24, 'icing'), P(420, 392, 160, 22, 'cookie'),
         V(520, 386, 116, 18, 354, 398, 0.42, 'float'), V(640, 352, 150, 20, 320, 372, 0.55, 'float'), P(740, 274, 110, 18, 'cookie'), P(860, 228, 110, 18, 'icing'),
         P(850, 352, 240, 20, 'cookie'), P(1000, 262, 92, 18, 'cookie'), P(1130, 420, 220, 24, 'cookie'),
         B(1220, 402, 80), V(1332, 350, 112, 18, 318, 362, 0.48, 'float'), P(1452, 322, 126, 18, 'cookie'), P(1540, 338, 140, 20, 'cookie'),
@@ -22,9 +22,11 @@
         P(940, 300, 78, 18, 'break')
       ],
       candies: [
-        C('bean_red', 152, 404), C('bean_orange', 252, 392), C('star_pink', 455, 346), C('bean_green', 692, 308), C('star_blue', 896, 308),
-        C('bean_blue', 978, 308), C('bean_purple', 1010, 262), C('star_purple', 1175, 372), C('bean_yellow', 1255, 358), C('star_pink', 1410, 332),
-        C('bean_red', 1560, 290), C('star_blue', 1760, 374), C('bean_green', 1880, 246), C('star_purple', 2050, 272), C('star_blue', 2120, 272)
+        C('bean_red', 152, 404), C('bean_orange', 252, 392), C('star_pink', 455, 346), C('bean_yellow', 590, 368), C('bean_green', 692, 308),
+        C('bean_blue', 748, 404), C('bean_orange', 858, 388), C('star_blue', 896, 308), C('bean_blue', 978, 308), C('bean_purple', 1010, 262),
+        C('star_purple', 1175, 372), C('bean_yellow', 1255, 358), C('bean_green', 1340, 328), C('star_pink', 1410, 332), C('bean_red', 1492, 292),
+        C('bean_red', 1560, 290), C('star_blue', 1760, 374), C('bean_yellow', 1838, 304), C('bean_green', 1880, 246), C('star_pink', 1970, 204),
+        C('star_purple', 2050, 272), C('bean_orange', 2090, 248), C('star_blue', 2120, 272)
       ],
       specials: [S('star_pink', 796, 232), S('star_blue', 1048, 222), S('star_purple', 2015, 196)],
       enemies: [E(770, 320, 'gummy', 150), E(1320, 386, 'marsh', 120), E(1880, 254, 'gummy', 100)],
