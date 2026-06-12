@@ -1817,30 +1817,176 @@
     ctx.textAlign = 'start';
   }
 
+  function currentPlatformTheme() {
+    return level && level.theme ? level.theme : 'meadow';
+  }
+
+  function basePlatformImage(p) {
+    if (p.kind === 'icing') return p.w > 260 ? assets.icing_long : assets.icing_block2;
+    if (p.kind === 'choco') return p.w > 200 ? assets.choco_long : assets.choco_double;
+    if (p.kind === 'cookie') {
+      if (p.crumbleTimer >= 52) return assets.cookie_cracked_3;
+      if (p.crumbleTimer >= 30) return assets.cookie_cracked_2;
+      if (p.crumbleTimer >= 12) return assets.cookie_cracked_1;
+      return p.w > 160 ? assets.cookie_long : assets.cookie_block;
+    }
+    if (p.kind === 'wafer') return p.w > 200 ? assets.wafer_long : assets.wafer_platform;
+    if (p.kind === 'syrup') return p.w > 140 ? assets.choco_long : assets.choco_double;
+    if (p.kind === 'tilt') return assets.wafer_bar;
+    if (p.kind === 'slide') return assets.icing_block2;
+    if (p.kind === 'moving') return assets.wafer_moving;
+    if (p.kind === 'raft') return assets.marshmallow_2;
+    if (p.kind === 'elevator') return assets.icing_block;
+    if (p.kind === 'break') return p.hit ? assets.cookie_cracked_2 : assets.cookie_cracked_1;
+    return assets.icing_long;
+  }
+
+  function themedPlatformImage(p, theme) {
+    const baseImg = basePlatformImage(p);
+    if (theme === 'meadow' || theme === 'lollipops' || theme === 'gummy') {
+      if (p.kind === 'icing') return p.w > 180 ? assets.candy_cane_straight || assets.icing_strip || baseImg : assets.lollipop_green || baseImg;
+      if (p.kind === 'cookie') return p.crumbleTimer > 0 ? baseImg : assets.candy_cane_pink || assets.lollipop_swirl || baseImg;
+      if (p.kind === 'moving') return assets.rod_pink || assets.wafer_moving || baseImg;
+      if (p.kind === 'break') return p.hit ? assets.cookie_cracked_2 : assets.lollipop_orange || baseImg;
+    }
+    if (theme === 'falls' || theme === 'mallows') {
+      if (p.kind === 'icing' || p.kind === 'slide') return p.w > 170 ? assets.icing_strip || assets.icing_long || baseImg : assets.icing_block2 || baseImg;
+      if (p.kind === 'cookie' || p.kind === 'choco') return assets.marshmallow_2 || assets.icing_block || baseImg;
+      if (p.kind === 'moving') return assets.icing_strip || assets.wafer_moving || baseImg;
+      if (p.kind === 'break') return p.hit ? assets.cookie_cracked_2 : assets.wafer_broken || baseImg;
+    }
+    if (theme === 'woods' || theme === 'jungle') {
+      if (p.kind === 'icing' || p.kind === 'cookie') return p.w > 190 ? assets.wafer_long || baseImg : assets.wafer_platform || baseImg;
+      if (p.kind === 'choco' || p.kind === 'syrup') return assets.wafer_block2 || assets.choco_double || baseImg;
+      if (p.kind === 'moving') return assets.wafer_moving || baseImg;
+      if (p.kind === 'break') return p.hit ? assets.wafer_broken || baseImg : assets.wafer_block3 || baseImg;
+    }
+    if (theme === 'courtyard' || theme === 'keep' || theme === 'sky') {
+      if (p.kind === 'icing') return p.w > 180 ? assets.frosting_ground || assets.icing_long || baseImg : assets.cake_disc_1 || assets.icing_block || baseImg;
+      if (p.kind === 'cookie') return p.crumbleTimer > 0 ? baseImg : assets.cake_disc_2 || assets.cookie_block || baseImg;
+      if (p.kind === 'choco') return assets.gate_piece || assets.choco_double || baseImg;
+      if (p.kind === 'moving') return assets.gate_piece || assets.wafer_moving || baseImg;
+      if (p.kind === 'elevator') return assets.cake_disc_3 || assets.icing_block || baseImg;
+      if (p.kind === 'break') return p.hit ? assets.gate_broken || baseImg : assets.gate_piece || baseImg;
+    }
+    return baseImg;
+  }
+
+  function platformThemeStyle(theme, kind) {
+    if (theme === 'meadow' || theme === 'lollipops' || theme === 'gummy') {
+      return { glow: 'rgba(255,158,208,0.22)', stroke: 'rgba(255,255,255,0.58)', filter: kind === 'break' ? 'none' : 'saturate(1.12) brightness(1.04)', accent: '#ff74ba' };
+    }
+    if (theme === 'falls' || theme === 'mallows') {
+      return { glow: 'rgba(137,228,255,0.26)', stroke: 'rgba(238,252,255,0.70)', filter: 'saturate(0.95) brightness(1.12)', accent: '#89e4ff' };
+    }
+    if (theme === 'woods' || theme === 'jungle') {
+      return { glow: 'rgba(186,243,170,0.20)', stroke: 'rgba(255,241,199,0.58)', filter: 'saturate(1.08) brightness(0.98)', accent: '#baf3aa' };
+    }
+    if (theme === 'courtyard') {
+      return { glow: 'rgba(255,176,212,0.24)', stroke: 'rgba(255,245,164,0.62)', filter: 'saturate(1.06) brightness(1.04)', accent: '#ffb0d4' };
+    }
+    if (theme === 'keep' || theme === 'sky') {
+      return { glow: 'rgba(135,240,204,0.24)', stroke: 'rgba(254,248,224,0.64)', filter: 'saturate(0.98) brightness(1.02)', accent: '#87f0cc' };
+    }
+    return { glow: 'rgba(255,255,255,0.18)', stroke: 'rgba(255,255,255,0.45)', filter: 'none', accent: '#fff27a' };
+  }
+
+  function drawPlatformAccent(p, theme, drawY, style) {
+    ctx.save();
+    ctx.globalAlpha = 0.58;
+    ctx.strokeStyle = style.stroke;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(p.x + 8, drawY + 4);
+    ctx.lineTo(p.x + p.w - 8, drawY + 4);
+    ctx.stroke();
+
+    if (theme === 'meadow' || theme === 'lollipops' || theme === 'gummy') {
+      const icon = theme === 'gummy' ? assets.gumdrop_pink : assets.lollipop_swirl;
+      if (icon && p.w >= 84) drawImageCentered(icon, p.x + p.w / 2, drawY + 1, 18);
+    } else if (theme === 'falls' || theme === 'mallows') {
+      ctx.fillStyle = 'rgba(255,255,255,0.72)';
+      ctx.beginPath();
+      ctx.arc(p.x + p.w - 20, drawY + 2, 5, 0, Math.PI * 2);
+      ctx.arc(p.x + 20, drawY + 3, 4, 0, Math.PI * 2);
+      ctx.fill();
+    } else if ((theme === 'woods' || theme === 'jungle') && p.kind === 'syrup') {
+      ctx.fillStyle = 'rgba(122,72,46,0.55)';
+      ctx.fillRect(p.x + 8, drawY + 4, Math.max(0, p.w - 16), 7);
+    } else if (theme === 'courtyard' || theme === 'keep' || theme === 'sky') {
+      const icon = theme === 'keep' ? assets.gate_piece : assets.star_pink;
+      if (icon && p.w >= 78) drawImageCentered(icon, p.x + p.w / 2, drawY + 1, 16);
+    }
+    ctx.restore();
+  }
+
+  function drawThemedPlatformSprite(img, p, drawY, h, style) {
+    roundRect(p.x - 3, drawY - 3, p.w + 6, Math.max(16, p.h + 8), 7, style.glow, style.stroke);
+    ctx.save();
+    ctx.filter = style.filter;
+    drawImageBottom(img, p.x, drawY + p.h + 12, h, p.w);
+    ctx.restore();
+    drawPlatformAccent(p, currentPlatformTheme(), drawY, style);
+  }
+
+  function drawThemedBouncePlatform(p, theme) {
+    const pulse = Math.sin(time * 0.18 + p.x * 0.02) * 2;
+    const style = platformThemeStyle(theme, p.kind);
+    const img = theme === 'woods' || theme === 'jungle'
+      ? assets.gumdrop_green || assets.marshmallow_1
+      : theme === 'courtyard' || theme === 'keep' || theme === 'sky'
+        ? assets.cake_disc_3 || assets.marshmallow_1
+        : theme === 'falls' || theme === 'mallows'
+          ? assets.marshmallow_2 || assets.marshmallow_1
+          : assets.gumdrop_pink || assets.marshmallow_1;
+    roundRect(p.x - 5, p.y + 3, p.w + 10, p.h + 14, 10, style.glow, style.stroke);
+    drawImageBottom(img, p.x - 4, p.y + p.h + 6 + pulse, 40 - pulse * 0.5, p.w + 8);
+  }
+
+  function drawThemedFloatPlatform(p, theme) {
+    const style = platformThemeStyle(theme, p.kind);
+    const top = theme === 'meadow' || theme === 'lollipops' || theme === 'gummy'
+      ? assets.candy_cane_pink || assets.candy_cane_straight || assets.lollipop_swirl
+      : theme === 'falls' || theme === 'mallows'
+        ? assets.marshmallow_2 || assets.icing_strip
+        : theme === 'woods' || theme === 'jungle'
+          ? assets.wafer_platform || assets.wafer_long
+          : assets.cake_disc_2 || assets.frosting_ground || assets.icing_block;
+    const stem = theme === 'woods' || theme === 'jungle'
+      ? assets.wafer_pole || assets.lollipop_green
+      : theme === 'courtyard' || theme === 'keep' || theme === 'sky'
+        ? assets.frosting_column || assets.gate_post || assets.lollipop_green
+        : assets.lollipop_pink || assets.lollipop_green;
+    roundRect(p.x - 4, p.y + 1, p.w + 8, p.h + 11, 8, style.glow, style.stroke);
+    if (stem) drawImageBottom(stem, p.x + p.w / 2 - 20, p.y + p.h + 22, 54, 40);
+    if (top) drawImageBottom(top, p.x, p.y + p.h + 10, 34, p.w);
+  }
+
+  function drawThemedGate(p, theme, openAlpha = 0.95, star = assets.star_blue) {
+    const style = platformThemeStyle(theme, p.kind);
+    ctx.save();
+    ctx.globalAlpha = openAlpha;
+    ctx.filter = style.filter;
+    drawImageBottom(assets.gate_intact, p.x, p.y + p.h, p.h + 18, p.w);
+    if (assets.gate_post && p.w >= 56) {
+      drawImageBottom(assets.gate_post, p.x - 8, p.y + p.h, p.h + 8, 16);
+      drawImageBottom(assets.gate_post, p.x + p.w - 8, p.y + p.h, p.h + 8, 16);
+    }
+    ctx.globalAlpha = Math.min(openAlpha, 0.34);
+    drawImageCentered(star, p.x + p.w / 2, p.y + p.h / 2, 14);
+    ctx.restore();
+  }
+
   function drawPlatforms() {
+    const theme = currentPlatformTheme();
     for (const p of platforms) {
       if (!p.alive) continue;
       let drawY = p.y + (p.hit ? Math.sin(time * 0.5) * 2 : 0);
-      let img = assets.icing_long;
+      let img = themedPlatformImage(p, theme);
       let h = p.h + 16;
-      if (p.kind === 'icing') img = p.w > 260 ? assets.icing_long : assets.icing_block2;
-      if (p.kind === 'choco') img = p.w > 200 ? assets.choco_long : assets.choco_double;
-      if (p.kind === 'cookie') {
-        if (p.crumbleTimer >= 52) img = assets.cookie_cracked_3;
-        else if (p.crumbleTimer >= 30) img = assets.cookie_cracked_2;
-        else if (p.crumbleTimer >= 12) img = assets.cookie_cracked_1;
-        else img = p.w > 160 ? assets.cookie_long : assets.cookie_block;
-      }
-      if (p.kind === 'wafer') img = p.w > 200 ? assets.wafer_long : assets.wafer_platform;
-      if (p.kind === 'syrup') img = p.w > 140 ? assets.choco_long : assets.choco_double;
-      if (p.kind === 'tilt') img = assets.wafer_bar;
-      if (p.kind === 'slide') img = assets.icing_block2;
-      if (p.kind === 'moving') img = assets.wafer_moving;
-      if (p.kind === 'raft') img = assets.marshmallow_2;
-      if (p.kind === 'elevator') img = assets.icing_block;
-      if (p.kind === 'break') img = p.hit ? assets.cookie_cracked_2 : assets.cookie_cracked_1;
+      const style = platformThemeStyle(theme, p.kind);
       if (p.kind === 'sugarGate') {
-        drawImageBottom(assets.gate_intact, p.x, p.y + p.h, p.h + 18, p.w);
+        drawThemedGate(p, theme, 0.95, assets.star_purple);
         ctx.save();
         ctx.globalAlpha = 0.22 + Math.sin(time * 0.12 + p.x * 0.01) * 0.08;
         drawImageCentered(assets.star_purple, p.x + p.w / 2, p.y + p.h / 2, 14);
@@ -1848,26 +1994,19 @@
         continue;
       }
       if (p.kind === 'blinkGate') {
-        ctx.save();
-        ctx.globalAlpha = p.open ? 0.25 : 0.95;
-        drawImageBottom(assets.gate_intact, p.x, p.y + p.h, p.h + 18, p.w);
-        ctx.globalAlpha = p.open ? 0.14 : 0.3;
-        drawImageCentered(assets.star_blue, p.x + p.w / 2, p.y + p.h / 2, 14);
-        ctx.restore();
+        drawThemedGate(p, theme, p.open ? 0.25 : 0.95, assets.star_blue);
         continue;
       }
       if (p.kind === 'bounce') {
-        const pulse = Math.sin(time * 0.18 + p.x * 0.02) * 2;
-        drawImageBottom(assets.marshmallow_1, p.x - 4, p.y + p.h + 6 + pulse, 40 - pulse * 0.5, p.w + 8);
+        drawThemedBouncePlatform(p, theme);
         continue;
       }
       if (p.kind === 'float') {
-        drawImageBottom(assets.lollipop_pink, p.x + p.w / 2 - 24, p.y + p.h + 18, 52, 48);
-        drawImageBottom(assets.cookie_round, p.x, p.y + p.h + 10, 34, p.w);
+        drawThemedFloatPlatform(p, theme);
         continue;
       }
       if (p.kind === 'raft') drawY += Math.sin(time * 0.08 + p.x * 0.01) * 3;
-      drawImageBottom(img, p.x, drawY + p.h + 12, h, p.w);
+      drawThemedPlatformSprite(img, p, drawY, h, style);
     }
   }
 

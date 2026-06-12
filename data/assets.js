@@ -73,13 +73,14 @@
   const assetNames = [
     ...Object.values(HERO_FRAMES).flatMap(group => Object.values(group).flat()),
     ...Object.values(ENEMY_FRAMES).flatMap(group => Object.values(group).flat()),
-    'icing_long','icing_block','icing_block2','icing_corner','choco_long','choco_block','choco_block2','choco_double',
+    'icing_long','icing_block','icing_block2','icing_corner','icing_strip','icing_fall','frosting_column','choco_long','choco_block','choco_block2','choco_double',
     'cookie_long','cookie_round','cookie_block','cookie_cracked_1','cookie_cracked_2','cookie_cracked_3','cupcake_checkpoint',
-    'wafer_long','wafer_block','wafer_block2','wafer_block3','wafer_broken','wafer_platform','wafer_moving','wafer_bar',
+    'wafer_long','wafer_block','wafer_block2','wafer_block3','wafer_broken','wafer_platform','wafer_moving','wafer_bar','wafer_pole','wafer_move_fx',
     'crystal','bean_purple','bean_red','bean_orange','bean_yellow','bean_green','bean_blue',
-    'gumdrop_green','gumdrop_blue','gumdrop_pink','gumdrop_orange','gumdrop_purple','marshmallow_1','marshmallow_2',
+    'gumdrop_green','gumdrop_blue','gumdrop_pink','gumdrop_orange','gumdrop_purple','gumdrops_decor','marshmallow_1','marshmallow_2',
     'jelly_orange','jelly_green','jelly_pink','star_blue','star_pink','star_purple',
-    'gate_intact','gate_piece','gate_broken','frosting_ground','candy_arch','lollipop_orange','lollipop_sprinkle','lollipop_swirl','lollipop_green','lollipop_pink','lollipop_purple'
+    'gate_intact','gate_piece','gate_broken','gate_post','frosting_ground','candy_arch','lollipop_orange','lollipop_sprinkle','lollipop_swirl','lollipop_green','lollipop_pink','lollipop_purple',
+    'candy_cane','candy_cane_pink','candy_cane_straight','rod_pink','rod_orange','rod_brown','cake_disc_1','cake_disc_2','cake_disc_3'
   ];
 
 
