@@ -7,6 +7,7 @@ This is a static browser game:
 - HTML entry point: `index.html`
 - Styling: `style.css`
 - Runtime/game logic: `game.js`
+- Data definitions: browser scripts in `data/`
 - Rendering: HTML canvas
 - Audio: Web Audio API
 - Persistence: `localStorage`
@@ -55,7 +56,7 @@ Owns runtime behavior:
 - Game state
 - Save keys
 - Asset loading
-- Level definitions
+- Data consumption
 - World map data
 - Input handling
 - Game loop
@@ -68,6 +69,17 @@ Owns runtime behavior:
 - Progression and localStorage persistence
 
 Prefer focused edits within existing sections. Avoid broad reorganizations unless explicitly requested.
+
+### `data/`
+
+Owns static JavaScript data loaded before `game.js`:
+
+- `shapes.js` for level-data helper constructors
+- `assets.js` for asset metadata, animation frames, background presentation, and ambience data
+- `levels.js` for main campaign and side-stage definitions
+- `world-map.js` for world-map node data
+
+Keep these files as plain browser scripts with stable `window.CandyQuest*` exports. Do not convert them to modules unless the project also intentionally changes how `index.html` loads scripts.
 
 ## Runtime model
 
@@ -171,7 +183,7 @@ When adding mechanics:
 
 ## Level data
 
-Levels are defined in JavaScript objects. Continue the existing pattern for:
+Levels are defined in `data/levels.js` as JavaScript objects. Continue the existing pattern for:
 
 - `name`
 - `theme`

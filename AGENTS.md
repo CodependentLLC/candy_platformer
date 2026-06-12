@@ -21,7 +21,8 @@ The app is intentionally simple:
 
 - `index.html` defines the canvas, HUD, menu, hero selection, world map entry points, and touch controls.
 - `style.css` owns responsive layout, HUD styling, menu styling, compact mobile mode, safe-area handling, and touch controls.
-- `game.js` owns game state, assets, levels, rendering, input, audio, world map flow, persistence, collision, enemies, collectibles, and story flow.
+- `data/` owns reusable data-shape helpers, asset metadata, level/stage definitions, and world-map node data.
+- `game.js` owns game state, asset loading, rendering, input, audio, world map flow, persistence, collision, enemies, collectibles, and story flow.
 - `assets/` contains sprites, backgrounds, tiles, enemies, hero art, world-map art, and icons.
 
 Do not introduce a framework or build step unless the task explicitly asks for that migration.
