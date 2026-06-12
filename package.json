@@ -1,0 +1,12 @@
+{
+  "name": "candy-quest-kids",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Static browser candy platformer.",
+  "scripts": {
+    "serve": "python3 -m http.server 8000",
+    "smoke:syntax": "node --check data/shapes.js && node --check data/assets.js && node --check data/levels.js && node --check data/world-map.js && node --check game.js && node --check tests/browser-smoke.mjs",
+    "smoke:browser": "node tests/browser-smoke.mjs",
+    "smoke": "npm run smoke:syntax && npm run smoke:browser"
+  }
+}

@@ -36,11 +36,39 @@ A browser-based candy platformer campaign with a bedtime story setup: a child wa
 3. Choose a starting chapter if needed.
 4. Click `Open The Door`.
 
+Optional local server:
+
+```sh
+npm run serve
+```
+
+Smoke check:
+
+```sh
+npm run smoke
+```
+
+The browser smoke test uses a locally installed Chromium-family browser. If it cannot find one automatically, set `BROWSER_BIN` to the browser executable path.
+
 ## Controls
 - Move: Left / Right arrows or A / D
 - Jump: Space, Up Arrow, or W
 - Restart current level: R or `Restart Level`
 - Return to menu after ending/game over: Enter or `Choose Hero`
+
+## Manual QA
+Before adding new levels, open `index.html` and confirm these core flows still work:
+
+- Choose both heroes from hero select.
+- Start Adventure enters the first playable level.
+- World Map opens and selects unlocked worlds.
+- Side Stages opens and shows available side routes.
+- Touch controls move and jump on a small or touch viewport.
+- Sound toggle switches sound on and off.
+- Fullscreen enters and exits cleanly.
+- Pause stops and resumes active play.
+- Restart reloads the current level.
+- Refresh the page and confirm saved hero/progress load safely.
 
 ## Notes
 This is still a handcrafted indie-sized campaign, not a full commercial Mario-scale production. The structure is now much closer to a real story mode and is set up so more chapters, hazards, bosses, and cutscenes can be added without changing the core architecture.

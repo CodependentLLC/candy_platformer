@@ -7,11 +7,13 @@ This is a static browser game:
 - HTML entry point: `index.html`
 - Styling: `style.css`
 - Runtime/game logic: `game.js`
+- Data definitions: browser scripts in `data/`
 - Rendering: HTML canvas
 - Audio: Web Audio API
 - Persistence: `localStorage`
 - Assets: files in `assets/`
-- No package manager or build step currently exists
+- Package scripts: `package.json` for local serving and smoke checks only
+- No build step currently exists
 
 Do not add a build system, framework, transpiler, dependency manager, or module bundler unless the task explicitly asks for it.
 
@@ -55,7 +57,7 @@ Owns runtime behavior:
 - Game state
 - Save keys
 - Asset loading
-- Level definitions
+- Data consumption
 - World map data
 - Input handling
 - Game loop
@@ -68,6 +70,28 @@ Owns runtime behavior:
 - Progression and localStorage persistence
 
 Prefer focused edits within existing sections. Avoid broad reorganizations unless explicitly requested.
+
+### `data/`
+
+Owns static JavaScript data loaded before `game.js`:
+
+- `shapes.js` for level-data helper constructors
+- `assets.js` for asset metadata, animation frames, background presentation, and ambience data
+- `levels.js` for main campaign and side-stage definitions
+- `world-map.js` for world-map node data
+
+Keep these files as plain browser scripts with stable `window.CandyQuest*` exports. Do not convert them to modules unless the project also intentionally changes how `index.html` loads scripts.
+
+### `package.json`
+
+Owns minimal development scripts only:
+
+- `npm run serve` starts a static local server for manual browser checks.
+- `npm run smoke:syntax` runs JavaScript syntax checks for the browser scripts and smoke test.
+- `npm run smoke:browser` starts a local static server and checks the page in a Chromium-family browser.
+- `npm run smoke` runs both syntax and browser smoke checks.
+
+Do not add dependencies, a build step, or framework tooling unless explicitly requested.
 
 ## Runtime model
 
@@ -171,7 +195,7 @@ When adding mechanics:
 
 ## Level data
 
-Levels are defined in JavaScript objects. Continue the existing pattern for:
+Levels are defined in `data/levels.js` as JavaScript objects. Continue the existing pattern for:
 
 - `name`
 - `theme`
