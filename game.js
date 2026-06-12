@@ -1220,7 +1220,14 @@
         if (isHiddenBonusStageIndex(levelIndex)) {
           enterWorldMap(BONUS_STAGE_INDEX);
         } else if (isBranchStageIndex(levelIndex)) {
-          enterWorldMap(levelIndex);
+          const branchParentIndex = levelIndex - MAIN_LEVEL_COUNT;
+          const nextMainIndex = branchParentIndex + 1;
+          if (nextMainIndex < MAIN_LEVEL_COUNT) {
+            setUnlockedLevel(nextMainIndex);
+            enterWorldMap(nextMainIndex);
+          } else {
+            enterWorldMap(levelIndex);
+          }
         } else if (levelIndex < MAIN_LEVEL_COUNT - 1) {
           setUnlockedLevel(levelIndex + 1);
           enterWorldMap(levelIndex + 1);
