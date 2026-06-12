@@ -2157,6 +2157,17 @@
       ctx.stroke();
     }
 
+    for (const branch of branchLayout) {
+      const nextMain = nodeLayout[branch.levelIndex + 1];
+      if (!nextMain || branch.levelIndex + 1 > unlockedLevel || !rewardRouteUnlocked(branch.levelIndex)) continue;
+      ctx.strokeStyle = 'rgba(255,240,170,.58)';
+      ctx.lineWidth = compact ? 4 : 5;
+      ctx.beginPath();
+      ctx.moveTo(branch.x, branch.y);
+      ctx.quadraticCurveTo((branch.x + nextMain.x) / 2, Math.min(branch.y, nextMain.y) - (compact ? 14 : 18), nextMain.x, nextMain.y);
+      ctx.stroke();
+    }
+
     if (globalAllSpecials) {
       const gateNode = nodeLayout[5];
       ctx.strokeStyle = 'rgba(255,242,122,.82)';
