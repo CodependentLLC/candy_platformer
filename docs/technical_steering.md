@@ -161,6 +161,20 @@ Rules:
 - Keep world/camera calculations independent from CSS display size.
 - Test desktop and compact mobile layouts after UI changes.
 - Avoid placing important HUD elements where mobile controls cover them.
+- Menus, hero selection, action menu, reset progress, and World Select must work in phone portrait.
+- Active gameplay is optimized for phone landscape, while portrait phone gameplay may show a rotate hint.
+- Touch controls must not overlap critical HUD, hazards, player position, or required gameplay reads.
+- World-map labels, nodes, selected markers, locked states, and play/start affordances must remain readable on mobile.
+
+Standard viewport matrix for responsive validation:
+
+- `375x667` phone portrait
+- `390x844` phone portrait
+- `667x375` phone landscape
+- `844x390` phone landscape
+- `768x1024` tablet portrait
+- `1024x768` tablet landscape
+- `1366x768` desktop
 
 ## Assets
 
@@ -288,12 +302,15 @@ When relevant, check:
 - Browser console has no new errors.
 - `index.html` loads directly.
 - Main menu and hero selection work.
+- Menus and World Select work in phone portrait.
 - Movement and jumping work.
+- Active gameplay is readable in phone landscape.
 - Candy collection and extra-life thresholds still work.
 - Damage, hearts, lives, checkpoints, restart, and game over work.
 - Level completion advances progress.
-- World map selection works.
+- World map selection works, and labels/nodes remain readable on mobile.
 - Side stages remain accessible only as intended.
+- Touch controls do not overlap critical HUD or gameplay.
 - Sound, pause, fullscreen, and compact mobile UI work.
 - Refreshing preserves progress safely.
 

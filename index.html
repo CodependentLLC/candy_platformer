@@ -83,8 +83,27 @@
             <div id="menuWorldView" class="menu-view menu-world-view" hidden>
               <p class="menu-kicker">Choose A World</p>
               <h2 class="menu-subtitle">World Select</h2>
-              <p class="menu-copy">The first world is playable now. New worlds unlock in sequence and slot into this same map system.</p>
-              <div id="worldCardList" class="world-card-list" aria-label="World selection"></div>
+              <p class="menu-copy">Pick a world to visit. More candy trails will open later.</p>
+              <div id="worldCardList" class="world-card-list" aria-label="World selection">
+                <article class="world-card playable">
+                  <p class="world-meta">World 1</p>
+                  <h3>Candy Meadow</h3>
+                  <p class="world-copy">Start at Lollipop Meadow and follow the main trail toward home.</p>
+                  <button id="worldOneButton" type="button">Play World 1</button>
+                </article>
+                <article class="world-card locked">
+                  <p class="world-meta">World 2</p>
+                  <h3>Cookie Coast</h3>
+                  <p class="world-gate">Locked for now. Complete World 1 to open the next trail.</p>
+                  <button type="button" disabled>Locked</button>
+                </article>
+                <article class="world-card locked">
+                  <p class="world-meta">Future World</p>
+                  <h3>Cupcake Kingdom</h3>
+                  <p class="world-gate">Coming later with its own map, stages, and rewards.</p>
+                  <button type="button" disabled>Coming Later</button>
+                </article>
+              </div>
               <div class="menu-actions world-actions">
                 <button id="backToActionsButton" class="secondary" type="button">Back</button>
               </div>
@@ -98,6 +117,7 @@
           <button data-tap="jump" class="jump">Jump</button>
         </div>
       </div>
+      <div class="rotate-hint" role="note">Turn your device sideways for the sweetest adventure.</div>
     </div>
   </main>
 
