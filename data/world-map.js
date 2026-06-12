@@ -29,8 +29,17 @@
   const MAP_NODE_BRANCH_OFFSET = 100;
   const MAP_NODE_BONUS = 200;
 
+  const WORLD_MAPS = {
+    'world-1-map': {
+      mapId: 'world-1-map',
+      mainNodes: WORLD_MAP_NODES,
+      branchNodes: WORLD_MAP_BRANCH_NODES,
+      bonusNode: WORLD_MAP_BONUS_NODE
+    }
+  };
 
   window.CandyQuestMap = {
+    WORLD_MAPS,
     WORLD_MAP_NODES,
     WORLD_MAP_BRANCH_NODES,
     WORLD_MAP_BONUS_NODE,
