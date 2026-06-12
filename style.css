@@ -318,6 +318,11 @@ button.danger:active { box-shadow: 0 2px 0 #b84c66; }
   text-align: center;
   gap: 6px;
 }
+.game-wrap.compact-ui .menu-world-view {
+  align-items: stretch;
+  text-align: center;
+  gap: 6px;
+}
 .game-wrap.compact-ui .menu-kicker {
   font-size: .62rem;
   letter-spacing: .06em;
@@ -378,6 +383,37 @@ button.danger:active { box-shadow: 0 2px 0 #b84c66; }
   min-width: 0;
   min-height: 46px;
   font-size: .86rem;
+}
+.game-wrap.compact-ui .world-card-list {
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+.game-wrap.compact-ui .world-card {
+  padding: 10px 10px 9px;
+  border-radius: 14px;
+}
+.game-wrap.compact-ui .world-card h3 {
+  margin-bottom: 4px;
+  font-size: .82rem;
+}
+.game-wrap.compact-ui .world-meta {
+  margin-bottom: 4px;
+  font-size: .58rem;
+}
+.game-wrap.compact-ui .world-copy,
+.game-wrap.compact-ui .world-gate {
+  margin-bottom: 4px;
+  font-size: .62rem;
+  line-height: 1.18;
+}
+.game-wrap.compact-ui .world-card button {
+  min-height: 32px;
+  font-size: .62rem;
+  margin-top: 2px;
+}
+.game-wrap.compact-ui .world-actions {
+  margin-top: 6px;
 }
 .game-wrap.compact-ui .menu-actions {
   width: 100%;
@@ -460,6 +496,9 @@ button.danger:active { box-shadow: 0 2px 0 #b84c66; }
   min-height: 100%;
 }
 .menu-action-view {
+  width: 100%;
+}
+.menu-world-view {
   width: 100%;
 }
 .menu-card h1 {
@@ -548,6 +587,63 @@ button.danger:active { box-shadow: 0 2px 0 #b84c66; }
   color: #7a3c65;
   font-size: .8rem;
   font-weight: 700;
+}
+.world-card-list {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+.world-card {
+  padding: 14px 14px 12px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.72);
+  border: 1px solid rgba(255,255,255,.58);
+  box-shadow: 0 8px 18px rgba(23, 29, 35, .08);
+  text-align: left;
+}
+.world-card h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  line-height: 1.05;
+  color: #d83787;
+}
+.world-meta,
+.world-copy,
+.world-gate {
+  margin: 0 0 6px;
+  color: #5a2e20;
+}
+.world-meta {
+  font-size: .7rem;
+  font-weight: 800;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+.world-copy,
+.world-gate {
+  font-size: .76rem;
+  line-height: 1.28;
+}
+.world-card button {
+  width: 100%;
+  min-height: 38px;
+  margin-top: 4px;
+}
+.world-card.locked {
+  opacity: .72;
+}
+.world-card.locked h3 {
+  color: #8f7f88;
+}
+.world-card.locked .world-copy,
+.world-card.locked .world-gate,
+.world-card.locked .world-meta {
+  color: #7f7078;
+}
+.world-actions {
+  margin-top: 12px;
 }
 .menu-heroes,
 .menu-actions {

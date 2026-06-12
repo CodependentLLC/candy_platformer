@@ -73,10 +73,20 @@
               <div class="menu-actions">
                 <button id="resumeButton" class="secondary" type="button">Resume</button>
                 <button id="startButton" type="button">Start Adventure</button>
-                <button id="mapButton" class="secondary" type="button">World Map</button>
+                <button id="mapButton" class="secondary" type="button">World Select</button>
                 <button id="sideStagesButton" class="secondary" type="button">Side Stages</button>
                 <button id="resetProgressButton" class="secondary danger" type="button">Reset Progress</button>
                 <button id="backToHeroButton" class="secondary" type="button">Back</button>
+              </div>
+            </div>
+
+            <div id="menuWorldView" class="menu-view menu-world-view" hidden>
+              <p class="menu-kicker">Choose A World</p>
+              <h2 class="menu-subtitle">World Select</h2>
+              <p class="menu-copy">The first world is playable now. New worlds unlock in sequence and slot into this same map system.</p>
+              <div id="worldCardList" class="world-card-list" aria-label="World selection"></div>
+              <div class="menu-actions world-actions">
+                <button id="backToActionsButton" class="secondary" type="button">Back</button>
               </div>
             </div>
           </div>
