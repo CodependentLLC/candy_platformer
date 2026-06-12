@@ -344,11 +344,11 @@
   }
 
   function firstVisibleBranchTarget() {
-    for (let i = 0; i <= unlockedLevel && i < WORLD_MAP_BRANCH_NODES.length; i++) {
-      if (rewardRouteUnlocked(i)) return branchNodeId(i);
+    for (const branch of WORLD_MAP_BRANCH_NODES) {
+      if (branch.levelIndex <= unlockedLevel && rewardRouteUnlocked(branch.levelIndex)) return branchNodeId(branch.levelIndex);
     }
-    for (let i = 0; i <= unlockedLevel && i < WORLD_MAP_BRANCH_NODES.length; i++) {
-      return i;
+    for (const branch of WORLD_MAP_BRANCH_NODES) {
+      if (branch.levelIndex <= unlockedLevel) return branchNodeId(branch.levelIndex);
     }
     return 0;
   }
@@ -356,7 +356,7 @@
   function openSideStagesMap() {
     const nodes = selectableMapNodes();
     const targetNode = firstVisibleBranchTarget();
-    const selectedNode = nodes.includes(targetNode) ? targetNode : stageIndexForMapNode(targetNode);
+    const selectedNode = nodes.includes(targetNode) ? targetNode : (nodes[0] ?? 0);
     const targetIndex = stageIndexForMapNode(selectedNode);
     loadLevel(targetIndex);
     hasActiveRun = true;
@@ -660,30 +660,51 @@
     return id === MAP_NODE_BONUS;
   }
 
+  function mapNodeStageIndex(node, nodeIndex) {
+    return Number.isInteger(node?.stageIndex) ? node.stageIndex : nodeIndex;
+  }
+
+  function mapNodeUnlockLevel(node, nodeIndex) {
+    if (Number.isInteger(node?.unlockLevel)) return node.unlockLevel;
+    const stageIndex = mapNodeStageIndex(node, nodeIndex);
+    if (isBranchStageIndex(stageIndex)) return Math.min(MAIN_LEVEL_COUNT - 1, stageIndex - MAIN_LEVEL_COUNT + 1);
+    return Math.max(0, Math.min(MAIN_LEVEL_COUNT - 1, stageIndex));
+  }
+
+  function mapNodeIdForStageIndex(stageIndex) {
+    if (isHiddenBonusStageIndex(stageIndex)) return MAP_NODE_BONUS;
+    const nodeIndex = WORLD_MAP_NODES.findIndex((node, index) => mapNodeStageIndex(node, index) === stageIndex);
+    if (nodeIndex >= 0) return nodeIndex;
+    if (isBranchStageIndex(stageIndex)) return branchNodeId(stageIndex - MAIN_LEVEL_COUNT);
+    return stageIndex;
+  }
+
   function stageIndexForMapNode(id) {
     if (isBranchNodeId(id)) return branchStageIndex(id - MAP_NODE_BRANCH_OFFSET);
     if (isBonusNodeId(id)) return BONUS_STAGE_INDEX;
-    return id;
+    const node = WORLD_MAP_NODES[id];
+    return node ? mapNodeStageIndex(node, id) : id;
   }
 
   function selectableMapNodes() {
     const nodes = [];
-    for (let i = 0; i <= unlockedLevel; i++) {
-      nodes.push(i);
-      if (rewardRouteUnlocked(i)) nodes.push(branchNodeId(i));
+    WORLD_MAP_NODES.forEach((node, index) => {
+      if (unlockedLevel >= mapNodeUnlockLevel(node, index)) nodes.push(index);
+    });
+    for (const branch of WORLD_MAP_BRANCH_NODES) {
+      if (branch.levelIndex <= unlockedLevel && rewardRouteUnlocked(branch.levelIndex)) nodes.push(branchNodeId(branch.levelIndex));
     }
     if (allSpecialsComplete()) nodes.push(MAP_NODE_BONUS);
     return nodes;
   }
 
   function currentMapNodeId() {
-    if (isHiddenBonusStageIndex(mapLevelIndex)) return MAP_NODE_BONUS;
-    if (isBranchStageIndex(mapLevelIndex)) return branchNodeId(mapLevelIndex - MAIN_LEVEL_COUNT);
-    return mapLevelIndex;
+    return mapNodeIdForStageIndex(mapLevelIndex);
   }
 
-  function branchNodeLayoutKey(id) {
-    return id - MAP_NODE_BRANCH_OFFSET;
+  function mainPathBranchStageAfterMainLevel(mainLevelIndex) {
+    if (mainLevelIndex === 0 || mainLevelIndex === 1) return branchStageIndex(mainLevelIndex);
+    return null;
   }
 
   function medalCount(i) {
@@ -911,11 +932,7 @@
 
   function enterWorldMap(nextLevel) {
     const nodes = selectableMapNodes();
-    const nextNode = isHiddenBonusStageIndex(nextLevel)
-      ? MAP_NODE_BONUS
-      : isBranchStageIndex(nextLevel)
-        ? branchNodeId(nextLevel - MAIN_LEVEL_COUNT)
-        : nextLevel;
+    const nextNode = mapNodeIdForStageIndex(nextLevel);
     const targetNode = nodes.includes(nextNode) ? nextNode : (nodes[0] ?? 0);
     const clamped = stageIndexForMapNode(targetNode);
     menuReturnState = 'map';
@@ -1239,7 +1256,7 @@
           }
         } else if (levelIndex < MAIN_LEVEL_COUNT - 1) {
           setUnlockedLevel(levelIndex + 1);
-          enterWorldMap(levelIndex + 1);
+          enterWorldMap(mainPathBranchStageAfterMainLevel(levelIndex) ?? levelIndex + 1);
         } else {
           escapeTimer = 0;
           gameState = 'escape';
@@ -2270,10 +2287,16 @@
       x: compact ? (WORLD_MAP_BONUS_NODE.mobileX ?? WORLD_MAP_BONUS_NODE.x) : WORLD_MAP_BONUS_NODE.x,
       y: compact ? (WORLD_MAP_BONUS_NODE.mobileY ?? WORLD_MAP_BONUS_NODE.y) : WORLD_MAP_BONUS_NODE.y
     };
+    const mainLayoutForStageIndex = stageIndex => {
+      const nodeIndex = WORLD_MAP_NODES.findIndex((node, index) => mapNodeStageIndex(node, index) === stageIndex);
+      return nodeIndex >= 0 ? nodeLayout[nodeIndex] : null;
+    };
     const pointForMapIndex = index => {
       if (isBonusNodeId(index) || index === BONUS_STAGE_INDEX) return bonusNode;
-      if (isBranchNodeId(index)) return branchLayout[branchNodeLayoutKey(index)];
-      return nodeLayout[index];
+      if (isBranchNodeId(index)) {
+        return branchLayout.find(branch => branch.levelIndex === index - MAP_NODE_BRANCH_OFFSET) || nodeLayout[0];
+      }
+      return nodeLayout[index] || nodeLayout[0];
     };
 
     ctx.save();
@@ -2303,7 +2326,7 @@
     for (let i = 1; i < nodeLayout.length; i++) {
       const from = nodeLayout[i - 1];
       const to = nodeLayout[i];
-      const openSegment = i <= unlockedLevel;
+      const openSegment = unlockedLevel >= mapNodeUnlockLevel(WORLD_MAP_NODES[i], i);
       ctx.strokeStyle = openSegment ? 'rgba(255,186,218,.94)' : 'rgba(255,255,255,.30)';
       ctx.lineWidth = compact ? (openSegment ? 10 : 8) : (openSegment ? 11 : 9);
       ctx.beginPath();
@@ -2322,7 +2345,8 @@
 
     for (const branch of branchLayout) {
       if (branch.levelIndex > unlockedLevel) continue;
-      const main = nodeLayout[branch.levelIndex];
+      const main = mainLayoutForStageIndex(branch.levelIndex);
+      if (!main) continue;
       ctx.strokeStyle = rewardRouteUnlocked(branch.levelIndex) ? 'rgba(255,240,170,.72)' : 'rgba(255,255,255,.28)';
       ctx.lineWidth = compact ? 5 : 6;
       ctx.beginPath();
@@ -2332,7 +2356,7 @@
     }
 
     for (const branch of branchLayout) {
-      const nextMain = nodeLayout[branch.levelIndex + 1];
+      const nextMain = mainLayoutForStageIndex(branch.levelIndex + 1);
       if (!nextMain || branch.levelIndex + 1 > unlockedLevel || !rewardRouteUnlocked(branch.levelIndex)) continue;
       ctx.strokeStyle = 'rgba(255,240,170,.58)';
       ctx.lineWidth = compact ? 4 : 5;
@@ -2343,7 +2367,7 @@
     }
 
     if (globalAllSpecials) {
-      const gateNode = nodeLayout[5];
+      const gateNode = nodeLayout[WORLD_MAP_NODES.length - 1];
       ctx.strokeStyle = 'rgba(255,242,122,.82)';
       ctx.lineWidth = compact ? 6 : 7;
       ctx.beginPath();
@@ -2354,13 +2378,17 @@
 
     WORLD_MAP_NODES.forEach((node, index) => {
       const pos = nodeLayout[index];
-      const unlocked = index <= unlockedLevel;
-      const completed = index < unlockedLevel;
+      const stageIndex = mapNodeStageIndex(node, index);
+      const unlockLevel = mapNodeUnlockLevel(node, index);
+      const unlocked = unlockedLevel >= unlockLevel;
+      const completed = isBranchStageIndex(stageIndex)
+        ? unlockedLevel > stageIndex - MAIN_LEVEL_COUNT
+        : stageIndex < unlockedLevel;
       const isNext = index === mapMarkerToIndex;
-      const specialTotal = levelSpecialCount(index);
-      const specialFound = collectedSpecialCount(index);
+      const specialTotal = levelSpecialCount(stageIndex);
+      const specialFound = collectedSpecialCount(stageIndex);
       const allSpecials = specialTotal > 0 && specialFound === specialTotal;
-      const medals = medalProgress[index] || { swift: false, steady: false, specialist: false };
+      const medals = medalProgress[stageIndex] || { swift: false, steady: false, specialist: false };
       const plateFill = unlocked ? node.plate : 'rgba(240,234,238,.76)';
       const ringFill = unlocked ? node.color : '#d8c8d0';
       const plateW = compact ? (isNext ? 72 : 64) : 62;

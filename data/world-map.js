@@ -1,16 +1,17 @@
 (() => {
   const WORLD_MAP_NODES = [
-    { x: 118, y: 318, mobileX: 112, mobileY: 348, color: '#ff8fc8', icon: 'lollipop_pink', badge: 'bean_red', plate: '#fff0f7', label: 'Meadow', stamp: 'star_pink', labelDy: 42, mobileLabelDy: 46 },
-    { x: 278, y: 262, mobileX: 252, mobileY: 292, color: '#f7b55a', icon: 'cookie_round', badge: 'star_purple', plate: '#fff3e3', label: 'Pretzel', stamp: 'star_purple', labelDy: 42, mobileLabelDy: 42 },
-    { x: 404, y: 312, mobileX: 390, mobileY: 344, color: '#8ddfff', icon: 'icing_block2', badge: 'star_blue', plate: '#eefcff', label: 'Falls', stamp: 'star_blue', labelDy: 46, mobileLabelDy: 46 },
-    { x: 590, y: 268, mobileX: 536, mobileY: 292, color: '#f6d56d', icon: 'wafer_platform', badge: 'bean_green', plate: '#fff8df', label: 'Woods', stamp: 'bean_green', labelDy: 42, mobileLabelDy: 42 },
-    { x: 742, y: 258, mobileX: 682, mobileY: 336, color: '#ffb3d6', icon: 'cookie_block', badge: 'star_pink', plate: '#fff1f7', label: 'Cake', stamp: 'star_pink', labelDy: 46, mobileLabelDy: 46 },
-    { x: 868, y: 168, mobileX: 824, mobileY: 244, color: '#79f0c3', icon: 'candy_arch', badge: 'star_blue', plate: '#effff9', label: 'Gate', stamp: 'candy_arch', labelDy: 40, mobileLabelDy: 40 }
+    { x: 100, y: 318, mobileX: 92, mobileY: 354, color: '#ff8fc8', icon: 'lollipop_pink', badge: 'bean_red', plate: '#fff0f7', label: 'Meadow', stamp: 'star_pink', labelDy: 42, mobileLabelDy: 46, stageIndex: 0, unlockLevel: 0 },
+    // Grove and Jungle still live in BONUS_STAGES for save/stage-index compatibility, but they are now World 1 main-path stops.
+    { x: 215, y: 256, mobileX: 200, mobileY: 286, color: '#ffd86a', icon: 'lollipop_green', badge: 'bean_green', plate: '#fff8dd', label: 'Grove', stamp: 'bean_green', labelDy: 42, mobileLabelDy: 42, stageIndex: 6, unlockLevel: 1 },
+    { x: 330, y: 314, mobileX: 302, mobileY: 344, color: '#f7b55a', icon: 'cookie_round', badge: 'star_purple', plate: '#fff3e3', label: 'Pretzel', stamp: 'star_purple', labelDy: 42, mobileLabelDy: 42, stageIndex: 1, unlockLevel: 1 },
+    { x: 445, y: 252, mobileX: 410, mobileY: 246, color: '#ffc48a', icon: 'wafer_bar', badge: 'star_purple', plate: '#fff1e1', label: 'Jungle', stamp: 'star_purple', labelDy: 42, mobileLabelDy: 42, stageIndex: 7, unlockLevel: 2 },
+    { x: 555, y: 312, mobileX: 512, mobileY: 344, color: '#8ddfff', icon: 'icing_block2', badge: 'star_blue', plate: '#eefcff', label: 'Falls', stamp: 'star_blue', labelDy: 46, mobileLabelDy: 46, stageIndex: 2, unlockLevel: 2 },
+    { x: 665, y: 268, mobileX: 615, mobileY: 292, color: '#f6d56d', icon: 'wafer_platform', badge: 'bean_green', plate: '#fff8df', label: 'Woods', stamp: 'bean_green', labelDy: 42, mobileLabelDy: 42, stageIndex: 3, unlockLevel: 3 },
+    { x: 780, y: 292, mobileX: 720, mobileY: 336, color: '#ffb3d6', icon: 'cookie_block', badge: 'star_pink', plate: '#fff1f7', label: 'Cake', stamp: 'star_pink', labelDy: 46, mobileLabelDy: 46, stageIndex: 4, unlockLevel: 4 },
+    { x: 890, y: 168, mobileX: 830, mobileY: 244, color: '#79f0c3', icon: 'candy_arch', badge: 'star_blue', plate: '#effff9', label: 'Gate', stamp: 'candy_arch', labelDy: 40, mobileLabelDy: 40, stageIndex: 5, unlockLevel: 5 }
   ];
 
   const WORLD_MAP_BRANCH_NODES = [
-    { levelIndex: 0, x: 198, y: 222, mobileX: 174, mobileY: 246, color: '#ffd86a', plate: '#fff8dd', icon: 'lollipop_green', label: 'Grove' },
-    { levelIndex: 1, x: 352, y: 190, mobileX: 322, mobileY: 204, color: '#ffc48a', plate: '#fff1e1', icon: 'wafer_bar', label: 'Jungle' },
     { levelIndex: 2, x: 492, y: 226, mobileX: 468, mobileY: 250, color: '#9de9ff', plate: '#eefcff', icon: 'marshmallow_2', label: 'Drift' },
     { levelIndex: 3, x: 666, y: 182, mobileX: 608, mobileY: 204, color: '#d8f37b', plate: '#f7ffe3', icon: 'wafer_platform', label: 'Loop' },
     { levelIndex: 4, x: 810, y: 168, mobileX: 754, mobileY: 226, color: '#ffb9de', plate: '#fff0f6', icon: 'gate_piece', label: 'Skyway' }
