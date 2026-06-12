@@ -78,6 +78,11 @@
   const specialSaveKey = 'candy-platformer-special-progress';
   const rewardSaveKey = 'candy-platformer-reward-progress';
   const medalSaveKey = 'candy-platformer-medal-progress';
+  const versionedSaveKey = 'candy-platformer-save-v1';
+  const currentSaveVersion = 1;
+  const currentWorldId = 'world-1';
+  // These legacy keys remain the source of truth until progression moves to stable world/stage IDs.
+  const legacyProgressSaveKeys = [saveKey, specialSaveKey, rewardSaveKey, medalSaveKey];
   let unlockedLevel = 0;
   let hasActiveRun = false;
   let menuReturnState = 'map';
@@ -266,6 +271,69 @@
     } catch {}
   }
 
+  function stageForSaveIndex(index) {
+    if (index < MAIN_LEVEL_COUNT) return LEVELS[index] || null;
+    return BONUS_STAGES[index - MAIN_LEVEL_COUNT] || null;
+  }
+
+  function stageIdForSaveIndex(index) {
+    const stage = stageForSaveIndex(index);
+    return stage && typeof stage.id === 'string' ? stage.id : '';
+  }
+
+  function keyedStageProgress(rows, normalizeValue) {
+    return rows.reduce((progressByStageId, row, index) => {
+      const stageId = stageIdForSaveIndex(index);
+      if (stageId) progressByStageId[stageId] = normalizeValue(row, index);
+      return progressByStageId;
+    }, {});
+  }
+
+  function readLegacySave() {
+    return {
+      unlockedLevel: readUnlockedLevel(),
+      selectedHero: readSelectedHero(),
+      specialProgress: readSpecialProgress(),
+      rewardProgress: readRewardProgress(),
+      medalProgress: readMedalProgress()
+    };
+  }
+
+  function normalizeLegacySave(legacySave) {
+    const unlockedStageIds = LEVELS
+      .slice(0, legacySave.unlockedLevel + 1)
+      .map(level => level.id)
+      .filter(Boolean);
+    const completedStageIds = LEVELS
+      .slice(0, legacySave.unlockedLevel)
+      .map(level => level.id)
+      .filter(Boolean);
+
+    return {
+      version: currentSaveVersion,
+      source: 'legacy-localStorage',
+      currentWorldId,
+      unlockedWorldIds: [currentWorldId],
+      selectedHero: legacySave.selectedHero,
+      unlockedLevelIndex: legacySave.unlockedLevel,
+      unlockedStageIds,
+      completedStageIds,
+      specialsByStageId: keyedStageProgress(legacySave.specialProgress, row => Array.isArray(row) ? row.map(Boolean) : []),
+      rewardsByStageId: keyedStageProgress(legacySave.rewardProgress, value => !!value),
+      medalsByStageId: keyedStageProgress(legacySave.medalProgress, row => ({
+        swift: !!(row && row.swift),
+        steady: !!(row && row.steady),
+        specialist: !!(row && row.specialist)
+      })),
+      // Preserve the legacy arrays for the current index-based runtime until save migration is explicit.
+      legacy: legacySave
+    };
+  }
+
+  function readVersionedSave() {
+    return normalizeLegacySave(readLegacySave());
+  }
+
   function setHero(nextHero) {
     selectedHero = nextHero === 'girl' ? 'girl' : 'boy';
     persistSelectedHero();
@@ -278,10 +346,9 @@
     rewardProgress = LEVELS.map(() => false);
     medalProgress = Array.from({ length: ALL_STAGE_COUNT }, () => ({ swift: false, steady: false, specialist: false }));
     try {
-      localStorage.removeItem(saveKey);
-      localStorage.removeItem(specialSaveKey);
-      localStorage.removeItem(rewardSaveKey);
-      localStorage.removeItem(medalSaveKey);
+      for (const key of legacyProgressSaveKeys) localStorage.removeItem(key);
+      // Future stable-ID saves should clear with Reset Progress, but are not written yet.
+      localStorage.removeItem(versionedSaveKey);
     } catch {}
     totalCandy = 0;
     nextExtraLifeAt = 45;
@@ -344,10 +411,11 @@
   }
 
   function firstVisibleBranchTarget() {
-    for (let i = 0; i <= unlockedLevel && i < WORLD_MAP_BRANCH_NODES.length; i++) {
+    const branchNodes = currentWorldMapData().branchNodes || WORLD_MAP_BRANCH_NODES;
+    for (let i = 0; i <= unlockedLevel && i < branchNodes.length; i++) {
       if (rewardRouteUnlocked(i)) return branchNodeId(i);
     }
-    for (let i = 0; i <= unlockedLevel && i < WORLD_MAP_BRANCH_NODES.length; i++) {
+    for (let i = 0; i <= unlockedLevel && i < branchNodes.length; i++) {
       return i;
     }
     return 0;
@@ -545,6 +613,9 @@
     BONUS_STAGE_INDEX,
     ALL_STAGE_COUNT
   } = window.CandyQuestLevels;
+  const {
+    WORLDS
+  } = window.CandyQuestWorlds || { WORLDS: [] };
 
   const maxHearts = 3;
   const maxLives = 5;
@@ -638,6 +709,35 @@
 
   function getStageData(i) {
     return isBonusStageIndex(i) ? BONUS_STAGES[i - MAIN_LEVEL_COUNT] : LEVELS[i];
+  }
+
+  function getWorldById(worldId) {
+    return (Array.isArray(WORLDS) ? WORLDS : []).find(world => world.id === worldId) || null;
+  }
+
+  function getCurrentWorld() {
+    return getWorldById(currentWorldId);
+  }
+
+  function isWorldUnlocked(worldId) {
+    return worldId === currentWorldId;
+  }
+
+  function isFinalMainStageForWorld(world, stageIndex) {
+    if (!world || !Array.isArray(world.mainStageIds)) return stageIndex === MAIN_LEVEL_COUNT - 1;
+    const stage = getStageData(stageIndex);
+    const finalStageId = world.mainStageIds[world.mainStageIds.length - 1];
+    return !!stage && stage.id === finalStageId;
+  }
+
+  function hasCurrentRunCompletedWorld(world) {
+    if (!isFinalMainStageForWorld(world, levelIndex)) return false;
+    return winTimer > 0 || gameState === 'escape' || gameState === 'ending';
+  }
+
+  function isWorldComplete(worldId) {
+    const world = getWorldById(worldId);
+    return isWorldUnlocked(worldId) && hasCurrentRunCompletedWorld(world);
   }
 
   function maxMapSelection() {
@@ -844,12 +944,23 @@
   }
 
   const {
+    WORLD_MAPS,
     WORLD_MAP_NODES,
     WORLD_MAP_BRANCH_NODES,
     WORLD_MAP_BONUS_NODE,
     MAP_NODE_BRANCH_OFFSET,
     MAP_NODE_BONUS
   } = window.CandyQuestMap;
+  const ACTIVE_WORLD_MAP_ID = 'world-1-map';
+
+  function currentWorldMapData() {
+    return (WORLD_MAPS && WORLD_MAPS[ACTIVE_WORLD_MAP_ID]) || {
+      mapId: ACTIVE_WORLD_MAP_ID,
+      mainNodes: WORLD_MAP_NODES,
+      branchNodes: WORLD_MAP_BRANCH_NODES,
+      bonusNode: WORLD_MAP_BONUS_NODE
+    };
+  }
 
   menuButton.addEventListener('click', openMenu);
 
@@ -2116,20 +2227,24 @@
     const compact = isMobileCanvas();
     const reveal = mapRevealTimer > 0 ? 1 - (mapRevealTimer / 42) : 1;
     const globalAllSpecials = allSpecialsComplete();
-    const nodeLayout = WORLD_MAP_NODES.map(node => ({
+    const worldMap = currentWorldMapData();
+    const mainNodes = worldMap.mainNodes || WORLD_MAP_NODES;
+    const branchNodes = worldMap.branchNodes || WORLD_MAP_BRANCH_NODES;
+    const mapBonusNode = worldMap.bonusNode || WORLD_MAP_BONUS_NODE;
+    const nodeLayout = mainNodes.map(node => ({
       x: compact ? (node.mobileX ?? node.x) : node.x,
       y: compact ? (node.mobileY ?? node.y) : node.y,
       labelDy: compact ? (node.mobileLabelDy ?? node.labelDy ?? 38) : (node.labelDy ?? 42)
     }));
-    const branchLayout = WORLD_MAP_BRANCH_NODES.map(node => ({
+    const branchLayout = branchNodes.map(node => ({
       ...node,
       x: compact ? (node.mobileX ?? node.x) : node.x,
       y: compact ? (node.mobileY ?? node.y) : node.y
     }));
     const bonusNode = {
-      ...WORLD_MAP_BONUS_NODE,
-      x: compact ? (WORLD_MAP_BONUS_NODE.mobileX ?? WORLD_MAP_BONUS_NODE.x) : WORLD_MAP_BONUS_NODE.x,
-      y: compact ? (WORLD_MAP_BONUS_NODE.mobileY ?? WORLD_MAP_BONUS_NODE.y) : WORLD_MAP_BONUS_NODE.y
+      ...mapBonusNode,
+      x: compact ? (mapBonusNode.mobileX ?? mapBonusNode.x) : mapBonusNode.x,
+      y: compact ? (mapBonusNode.mobileY ?? mapBonusNode.y) : mapBonusNode.y
     };
     const pointForMapIndex = index => {
       if (isBonusNodeId(index) || index === BONUS_STAGE_INDEX) return bonusNode;
@@ -2213,7 +2328,7 @@
       ctx.stroke();
     }
 
-    WORLD_MAP_NODES.forEach((node, index) => {
+    mainNodes.forEach((node, index) => {
       const pos = nodeLayout[index];
       const unlocked = index <= unlockedLevel;
       const completed = index < unlockedLevel;
@@ -2750,11 +2865,12 @@
     requestAnimationFrame(loop);
   }
 
-  unlockedLevel = readUnlockedLevel();
-  selectedHero = readSelectedHero();
-  specialProgress = readSpecialProgress();
-  rewardProgress = readRewardProgress();
-  medalProgress = readMedalProgress();
+  const saveState = readVersionedSave();
+  unlockedLevel = saveState.legacy.unlockedLevel;
+  selectedHero = saveState.legacy.selectedHero;
+  specialProgress = saveState.legacy.specialProgress;
+  rewardProgress = saveState.legacy.rewardProgress;
+  medalProgress = saveState.legacy.medalProgress;
   updateHeroButton();
   updateFullscreenButton();
   updatePauseButton();

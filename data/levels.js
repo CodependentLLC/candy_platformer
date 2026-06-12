@@ -3,6 +3,7 @@
 
   const LEVELS = [
     {
+      id: 'world-1-lollipop-meadow',
       name: 'Lollipop Meadow',
       theme: 'meadow',
       chapter: 'Chapter 1 of 6',
@@ -37,6 +38,7 @@
       wonders: [WZ(520, 330, 150, 110, 'The first lift rises slowly. It feels more magical than scary.', { color: '#ff9ed0' }), WZ(1660, 360, 210, 110, 'A cupcake clearing gives you a safe breath before the high trail.', { heart: 1, color: '#fff27a' })]
     },
     {
+      id: 'world-1-pretzel-path',
       name: 'Pretzel Path',
       theme: 'licorice',
       chapter: 'Chapter 2 of 6',
@@ -69,6 +71,7 @@
       wonders: [WZ(700, 266, 160, 110, 'The forked road shifts underfoot, but the candy markers still guide you.', { color: '#f7c471' }), WZ(1988, 336, 220, 110, 'A soft pretzel lantern glows over a safe pocket before the bridge sprint.', { heart: 1, color: '#fff27a' })]
     },
     {
+      id: 'world-1-ice-cream-falls',
       name: 'Ice Cream Falls',
       theme: 'falls',
       chapter: 'Chapter 3 of 6',
@@ -100,6 +103,7 @@
       wonders: [WZ(952, 392, 180, 120, 'The candy raft glides out from the frosting mist. It feels like a moving secret.', { color: '#8ddfff' }), WZ(2240, 186, 210, 120, 'A sparkling overlook opens above the falls. Everything below feels tiny now.', { heart: 1, color: '#fff27a' })]
     },
     {
+      id: 'world-1-waffle-woods',
       name: 'Waffle Woods',
       theme: 'woods',
       chapter: 'Chapter 4 of 6',
@@ -131,6 +135,7 @@
       wonders: [WZ(514, 334, 170, 110, 'The syrup path catches your steps and the whole woods go hushed for a moment.', { color: '#baf3aa' }), WZ(2140, 360, 220, 120, 'A hidden clearing opens with enough space to breathe before the final maze.', { heart: 1, color: '#fff27a' })]
     },
     {
+      id: 'world-1-cake-courtyard',
       name: 'Cake Courtyard',
       theme: 'courtyard',
       chapter: 'Chapter 5 of 6',
@@ -162,6 +167,7 @@
       wonders: [WZ(742, 306, 170, 120, 'The first frosting lift rises like a hidden stage above the courtyard.', { color: '#ffb3d6' }), WZ(2860, 250, 210, 120, 'Lanterns flicker over a calm landing before the final gate rhythm.', { heart: 1, color: '#fff27a' })]
     },
     {
+      id: 'world-1-kingdom-gate',
       name: 'Kingdom Gate',
       theme: 'keep',
       chapter: 'Chapter 6 of 6',
@@ -198,6 +204,7 @@
 
   const BONUS_STAGES = [
     {
+      id: 'world-1-gummy-grove',
       name: 'Gummy Grove',
       theme: 'gummy',
       chapter: 'Side Stage · Meadow Secret',
@@ -227,6 +234,7 @@
       wonders: [WZ(648, 286, 170, 120, 'The secret grove hangs above the main road like a quiet candy balcony.', { color: '#ff9ed0' })]
     },
     {
+      id: 'world-1-jungle-jelly-run',
       name: 'Jungle Jelly Run',
       theme: 'jungle',
       chapter: 'Side Stage · Pretzel Secret',
@@ -255,6 +263,7 @@
       wonders: [WZ(1112, 214, 180, 120, 'A hidden fork lifts you into the jungle canopy above the pretzel roads.', { color: '#baf3aa' })]
     },
     {
+      id: 'world-1-marshmallow-driftway',
       name: 'Marshmallow Driftway',
       theme: 'mallows',
       chapter: 'Side Stage · Falls Secret',
@@ -283,6 +292,7 @@
       wonders: [WZ(648, 366, 190, 120, 'The driftway glows through the mist like a marshmallow bridge in the sky.', { color: '#a9ebff' })]
     },
     {
+      id: 'world-1-lantern-lollipop-loop',
       name: 'Lantern Lollipop Loop',
       theme: 'lollipops',
       chapter: 'Side Stage · Woods Secret',
@@ -311,6 +321,7 @@
       wonders: [WZ(1420, 300, 210, 120, 'The hidden loop opens into a ring of candy lanterns high above the woods.', { color: '#ff9ad1' })]
     },
     {
+      id: 'world-1-sugar-skyway-sprint',
       name: 'Sugar Skyway Sprint',
       theme: 'sky',
       chapter: 'Side Stage · Courtyard Secret',
@@ -340,6 +351,7 @@
       wonders: [WZ(1280, 250, 220, 120, 'The skyway opens far above the courtyard, with nothing below but candy clouds.', { color: '#9de9ff' })]
     },
     {
+      id: 'world-1-morning-star-run',
       name: 'Morning Star Run',
       theme: 'keep',
       chapter: 'Bonus Stage',
