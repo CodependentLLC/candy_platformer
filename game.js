@@ -103,6 +103,7 @@
       return [theme, img];
     })
   );
+  const backgroundImageList = Object.values(backgroundImages);
 
   function updateFullscreenButton() {
     const active = document.fullscreenElement === canvas.parentElement;
@@ -2330,7 +2331,7 @@
       ctx.fillText(routeText, 128, H - 38);
       ctx.font = '700 8px system-ui';
       ctx.fillStyle = '#7a3c65';
-      ctx.fillText(mapBranchHintTimer > 0 ? 'Side stages are pulsing on the map' : 'LOCK = find all specials in that world', 128, H - 24);
+      ctx.fillText(mapBranchHintTimer > 0 ? 'Side stages are pulsing on the map' : 'Unlock side stages by finding all specials in that world.', 128, H - 24, W - 260);
       if (globalAllSpecials) {
         roundRect(W - 182, H - 54, 160, 34, 12, 'rgba(255,248,239,.72)', '#ffffff');
         ctx.fillStyle = '#d83787';
@@ -2358,7 +2359,7 @@
       roundRect(18, H - 42, 258, 26, 12, 'rgba(255,248,239,.68)', '#ffffff');
       ctx.fillStyle = '#7a3c65';
       ctx.font = '800 11px system-ui';
-      ctx.fillText(mapBranchHintTimer > 0 ? 'Side stages are highlighted on the map.' : 'LOCK side stages by finding all specials in that world.', 147, H - 25);
+      ctx.fillText(mapBranchHintTimer > 0 ? 'Side stages are highlighted on the map.' : 'Unlock side stages by finding all specials in that world.', 147, H - 25, 236);
     }
 
     if (mapRevealTimer > 0) {
@@ -2661,11 +2662,16 @@
   }
 
   function startLoopWhenReady() {
-    const levelBackgroundsReady = Object.values(backgroundImages).every(img => img.complete && img.naturalWidth > 0);
+    const levelBackgroundsReady = backgroundImageList.every(img => img.candyQuestSettled);
     if (!loopStarted && levelBackgroundsReady) {
       loopStarted = true;
       loop();
     }
+  }
+
+  function markBackgroundSettled(img) {
+    img.candyQuestSettled = true;
+    startLoopWhenReady();
   }
 
   function loop() {
@@ -2684,8 +2690,9 @@
   updatePauseButton();
   updateUiMode();
   bootToGame();
-  Object.values(backgroundImages).forEach(img => {
-    img.onload = startLoopWhenReady;
+  backgroundImageList.forEach(img => {
+    img.onload = () => markBackgroundSettled(img);
+    img.onerror = () => markBackgroundSettled(img);
+    if (img.complete) markBackgroundSettled(img);
   });
-  if (Object.values(backgroundImages).every(img => img.complete && img.naturalWidth > 0)) startLoopWhenReady();
 })();
