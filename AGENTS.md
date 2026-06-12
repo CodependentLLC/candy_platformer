@@ -14,6 +14,7 @@ Before making gameplay, UI, content, or architecture changes, read these steerin
 - `docs/technical_steering.md`
 - `docs/content_steering.md`
 - `docs/code_review.md`
+- `docs/world_expansion_plan.md`
 
 ## Current architecture
 
@@ -34,7 +35,7 @@ Open `index.html` in a modern browser, or run `npm run serve` and open the local
 There is no bundler, framework, or build step. `package.json` only provides development convenience scripts:
 
 - `npm run serve` starts a local static server with Python's built-in `http.server`.
-- `npm run smoke` runs syntax checks for the plain browser scripts.
+- `npm run smoke` runs syntax checks and the browser smoke check for the static game.
 
 ## Working rules for Codex
 
@@ -56,6 +57,7 @@ There is no bundler, framework, or build step. `package.json` only provides deve
 A change is ready only when:
 
 - `index.html` still loads in a modern browser.
+- `npm run smoke` passes when tooling is available.
 - The main menu, hero selection, Start Adventure, World Map, Side Stages, pause, restart, sound toggle, fullscreen, and touch controls still work where relevant.
 - The player can still complete at least one level after gameplay changes.
 - Save data still reads safely from localStorage and fails gracefully if storage is unavailable.
@@ -76,6 +78,8 @@ When relevant, manually check:
 7. Confirm compact/mobile layout still has usable controls.
 8. Toggle sound, pause, menu, and fullscreen.
 9. Refresh and confirm saved progress still loads.
+
+For runtime behavior changes, report both `npm run smoke` results and manual validation notes. Smoke checks do not replace manual gameplay validation.
 
 ## Commit style
 

@@ -86,6 +86,26 @@ Important actions should have clear visual and/or audio feedback:
 
 Additions should make it easier to add new chapters, hazards, bosses, cutscenes, or side stages without breaking the current game flow.
 
+## Future multi-world campaign
+
+The long-term campaign should support multiple worlds in a classic platformer structure. Each world should feel like a self-contained candy region with its own map, several main levels, optional side stages, rewards, and a clear path to the next world.
+
+When expanding toward multiple worlds:
+
+- Treat the current six-chapter campaign as content that can be wrapped into a first world or split into world-sized groups later.
+- Prefer stable world and stage IDs over array indexes for progression.
+- Keep each world readable: one main route, optional side routes, and clear unlock messaging.
+- Unlock the next world by completing that world's main path, not by requiring optional side-stage mastery.
+- Use side stages for optional challenge, specials, medals, and rewards.
+- Preserve a final story ending for the overall campaign, while allowing each world to have its own completion moment.
+
+Avoid:
+
+- Making every level its own "world" in naming or UI unless it actually has a map and internal progression.
+- Coupling future unlocks to fixed numeric level indexes.
+- Requiring all specials or medals to continue the main campaign.
+- Adding many new levels before world progression, save migration, and map data are stable.
+
 ## Level design rules
 
 When adding or changing a level:

@@ -82,6 +82,17 @@ Owns static JavaScript data loaded before `game.js`:
 
 Keep these files as plain browser scripts with stable `window.CandyQuest*` exports. Do not convert them to modules unless the project also intentionally changes how `index.html` loads scripts.
 
+Future world expansion should also live in `data/` as plain browser-script data. Prefer structures that separate:
+
+- world definitions
+- world-map nodes
+- stage definitions
+- side-stage unlock rules
+- world rewards
+- campaign unlock rules
+
+Use stable IDs such as `worldId`, `stageId`, and `nodeId` for new progression data. Avoid adding new save or unlock behavior that depends on fixed array offsets.
+
 ### `package.json`
 
 Owns minimal development scripts only:
@@ -117,6 +128,8 @@ Rules:
 - Clamp numeric progress to valid ranges.
 - Preserve old save data whenever possible.
 - If the save schema changes, add a migration path and document it here.
+- Before multi-world progression ships, introduce versioned save data and migrate current level-index progress safely.
+- New world/stage progress should be keyed by stable IDs rather than array indexes.
 
 ## Input
 
@@ -212,6 +225,24 @@ Levels are defined in `data/levels.js` as JavaScript objects. Continue the exist
 
 Keep new level objects readable. Use existing helper constructors when possible.
 
+## World data
+
+Future multiple-world support should be data-driven before adding lots of new content.
+
+Recommended shape:
+
+- `WORLDS`: ordered world definitions with `id`, `name`, `map`, `stages`, `sideStages`, rewards, and next-world unlock rules.
+- `STAGES`: stage definitions keyed by stable `stageId`, with each stage pointing to its `worldId`.
+- `map.nodes`: per-world map nodes that point to `stageId` and describe position, labels, icons, and unlock requirements.
+- `unlock` objects: explicit rules such as completing a stage, completing a world main path, or finding specials in a world.
+
+Rules:
+
+- Keep `data/` files as plain browser scripts with stable `window.CandyQuest*` exports.
+- Do not convert data files to modules or add a bundler for world expansion.
+- Keep current flat `LEVELS` compatibility until save migration and map rendering are safely adapted.
+- Add validation for world/stage data before relying on it for new content.
+
 ## Performance
 
 The game should feel smooth on common laptops, tablets, and phones.
@@ -244,7 +275,13 @@ Do not rely on color alone to communicate critical state.
 
 ## Testing and validation
 
-There is no automated test runner at the moment. For now, validation is manual.
+The project has smoke checks, not a full automated gameplay test suite. Use smoke checks for boot and syntax coverage, then validate runtime behavior manually.
+
+Run when relevant:
+
+- `npm run smoke:syntax` for JavaScript syntax checks.
+- `npm run smoke:browser` for static-server page boot, key DOM elements, and uncaught boot errors.
+- `npm run smoke` before handing off a runtime or tooling change when a Chromium-family browser is available.
 
 When relevant, check:
 
@@ -259,5 +296,7 @@ When relevant, check:
 - Side stages remain accessible only as intended.
 - Sound, pause, fullscreen, and compact mobile UI work.
 - Refreshing preserves progress safely.
+
+For runtime behavior changes, reviewers should ask for both smoke-check results and manual validation notes. Include browser/device tested, affected flow, console status, save/load notes when persistence is touched, and compact/mobile notes when UI or touch behavior is touched.
 
 If adding a test runner in the future, prioritize pure tests for collision, save parsing, progression unlocking, level data validation, gate timing, and medal conditions.

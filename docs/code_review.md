@@ -19,8 +19,10 @@ Check whether the change respects the current static-browser architecture:
 - Does `index.html` still load directly in a browser?
 - Did the change avoid unnecessary frameworks, build tools, and dependencies?
 - Are `index.html`, `style.css`, and `game.js` responsibilities preserved?
+- Are `data/` files kept as plain browser scripts with stable `window.CandyQuest*` exports?
 - Are DOM IDs and JavaScript references kept in sync?
 - Is the change focused rather than a broad rewrite?
+- If package scripts changed, do they remain development-only and avoid adding a build step?
 
 ## Gameplay
 
@@ -81,6 +83,20 @@ For save/progression changes, check:
 - Old save data still works or is migrated.
 - Reset Progress clears all relevant progress keys.
 - Refreshing the page does not corrupt progress.
+- New world or stage progression uses stable IDs rather than fixed array indexes.
+- Save schema changes include versioning and a migration path.
+
+## World expansion
+
+For future multi-world changes, check:
+
+- Worlds have stable `worldId` values.
+- Stages have stable `stageId` values and belong to a world.
+- World-map nodes reference valid stages.
+- Main-path completion unlocks the next world clearly.
+- Side stages and medals stay optional for casual campaign completion.
+- World rewards and unlock copy are clear and family-friendly.
+- New world data does not require a build step or module conversion.
 
 ## Performance
 
@@ -104,7 +120,18 @@ Check:
 
 ## Manual test notes
 
-Because there is currently no automated test runner, reviewers should ask for manual validation notes when the change affects runtime behavior.
+Because the project currently has smoke checks rather than a full automated gameplay test suite, reviewers should ask for both smoke-check results and manual validation notes when runtime behavior changes.
+
+Current npm smoke checks:
+
+- `npm run smoke:syntax`
+- `npm run smoke:browser`
+- `npm run smoke`
+
+Useful smoke request:
+
+- Ask for `npm run smoke` unless the change is docs-only.
+- If browser smoke cannot run, explain whether the blocker was missing browser tooling, sandbox permissions, or another environment issue.
 
 Useful validation requests:
 

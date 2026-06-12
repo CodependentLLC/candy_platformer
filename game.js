@@ -1120,6 +1120,25 @@
     return false;
   }
 
+  function enemyStandingOnPlatform(enemy, platform, previousX, previousY) {
+    if (!enemy.alive) return false;
+    const enemyBottom = enemy.y + enemy.h;
+    const overlapAtPreviousX = enemy.x + enemy.w > previousX + 5 && enemy.x < previousX + platform.w - 5;
+    const platformTopMin = Math.min(previousY, platform.y);
+    const platformTopMax = Math.max(previousY, platform.y);
+    return overlapAtPreviousX && enemyBottom >= platformTopMin - 4 && enemyBottom <= platformTopMax + 8;
+  }
+
+  function carrySupportedEnemies(platform, dx, dy, previousX, previousY) {
+    if (dx === 0 && dy === 0) return;
+    for (const enemy of enemies) {
+      if (!enemyStandingOnPlatform(enemy, platform, previousX, previousY)) continue;
+      enemy.x += dx;
+      enemy.y += dy;
+      enemy.y = platform.y - enemy.h;
+    }
+  }
+
   function snapSpawnToGround() {
     const feetX = player.x + player.w / 2;
     let landingY = null;
@@ -1227,6 +1246,8 @@
     const speedBoost = inRush ? 1.38 : 1;
 
     for (const p of platforms) {
+      const previousX = p.x;
+      const previousY = p.y;
       if (!p.alive && p.respawnTimer > 0) {
         p.respawnTimer--;
         if (p.respawnTimer <= 0) {
@@ -1247,6 +1268,9 @@
           p.dir *= -1;
           p.y = Math.max(p.minY, Math.min(p.maxY, p.y));
         }
+      }
+      if (p.alive && (p.kind === 'moving' || p.kind === 'raft' || p.kind === 'float' || p.kind === 'elevator')) {
+        carrySupportedEnemies(p, p.x - previousX, p.y - previousY, previousX, previousY);
       }
       if (p.kind === 'blinkGate') {
         const cycle = (p.openFor || 80) + (p.closedFor || 90);
