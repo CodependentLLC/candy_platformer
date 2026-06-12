@@ -87,5 +87,19 @@ World expansion PRs should include:
 - Manual validation notes for map selection and level start.
 - Save/load notes when persistence changes.
 - Compact/mobile notes when map UI or touch behavior changes.
+- Confirmation that menus and World Select work in phone portrait.
+- Confirmation that active gameplay remains optimized for phone landscape.
+- Confirmation that world-map labels, nodes, locked states, selected marker, and start/play action remain readable on mobile.
+- Confirmation that touch controls do not overlap critical HUD or gameplay.
+
+Use the standard responsive validation matrix from `docs/technical_steering.md` for map, menu, and gameplay-facing world expansion changes:
+
+- `375x667` phone portrait
+- `390x844` phone portrait
+- `667x375` phone landscape
+- `844x390` phone landscape
+- `768x1024` tablet portrait
+- `1024x768` tablet landscape
+- `1366x768` desktop
 
 Keep PRs small. Avoid combining save migration, map rendering changes, and new content in one large change.

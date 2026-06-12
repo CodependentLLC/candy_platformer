@@ -7,6 +7,13 @@ import { spawn } from 'node:child_process';
 const root = process.cwd();
 const timeoutMs = 15000;
 
+const viewports = [
+  { name: 'phone portrait', width: 390, height: 844, mobile: true },
+  { name: 'phone landscape', width: 844, height: 390, mobile: true },
+  { name: 'tablet portrait', width: 768, height: 1024, mobile: true },
+  { name: 'desktop', width: 1366, height: 768, mobile: false }
+];
+
 const mimeTypes = {
   '.css': 'text/css',
   '.html': 'text/html',
@@ -155,6 +162,35 @@ async function withTimeout(promise, message) {
   }
 }
 
+async function evaluate(cdp, sessionId, expression) {
+  const { result } = await cdp.send('Runtime.evaluate', {
+    awaitPromise: true,
+    returnByValue: true,
+    expression
+  }, sessionId);
+  if (result.subtype === 'error') throw new Error(result.description || 'Runtime evaluation failed.');
+  return result.value;
+}
+
+async function click(cdp, sessionId, selector) {
+  return evaluate(cdp, sessionId, `(() => {
+    const element = document.querySelector(${JSON.stringify(selector)});
+    if (!element) return { ok: false, reason: 'missing' };
+    if (element.disabled) return { ok: false, reason: 'disabled' };
+    element.click();
+    return { ok: true };
+  })()`);
+}
+
+async function waitForCondition(cdp, sessionId, expression, message) {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    if (await evaluate(cdp, sessionId, expression)) return;
+    await new Promise(resolveDelay => setTimeout(resolveDelay, 100));
+  }
+  throw new Error(message);
+}
+
 function waitForExit(child) {
   if (child.exitCode !== null) return Promise.resolve();
   return new Promise(resolveExit => {
@@ -192,6 +228,7 @@ async function run() {
     const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
     const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
     const pageErrors = [];
+    const consoleErrors = [];
 
     cdp.on('Runtime.exceptionThrown', message => {
       if (message.sessionId !== sessionId) return;
@@ -199,41 +236,133 @@ async function run() {
       pageErrors.push(details.exception?.description || details.text || 'Uncaught page error');
     });
 
+    cdp.on('Runtime.consoleAPICalled', message => {
+      if (message.sessionId !== sessionId || message.params.type !== 'error') return;
+      const args = message.params.args || [];
+      consoleErrors.push(args.map(arg => arg.value || arg.description || arg.type).join(' '));
+    });
+
     await cdp.send('Runtime.enable', {}, sessionId);
     await cdp.send('Page.enable', {}, sessionId);
 
-    const loaded = cdp.waitFor('Page.loadEventFired', message => message.sessionId === sessionId);
-    await cdp.send('Page.navigate', { url }, sessionId);
-    await withTimeout(loaded, 'Timed out waiting for index.html to load.');
-    await new Promise(resolveDelay => setTimeout(resolveDelay, 750));
+    for (const viewport of viewports) {
+      await cdp.send('Emulation.setDeviceMetricsOverride', {
+        width: viewport.width,
+        height: viewport.height,
+        deviceScaleFactor: viewport.mobile ? 2 : 1,
+        mobile: viewport.mobile
+      }, sessionId);
+      await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: viewport.mobile }, sessionId);
 
-    const { result } = await cdp.send('Runtime.evaluate', {
-      returnByValue: true,
-      expression: `(() => {
+      const loaded = cdp.waitFor('Page.loadEventFired', message => message.sessionId === sessionId);
+      await cdp.send('Page.navigate', { url }, sessionId);
+      await withTimeout(loaded, `Timed out waiting for index.html to load at ${viewport.name}.`);
+      await new Promise(resolveDelay => setTimeout(resolveDelay, 750));
+
+      const boot = await evaluate(cdp, sessionId, `(() => {
         const checks = [
           ['#gameCanvas', !!document.querySelector('#gameCanvas')],
           ['#menuOverlay', !!document.querySelector('#menuOverlay')],
+          ['#menuHeroView', !!document.querySelector('#menuHeroView')],
           ['#menuBoyButton', !!document.querySelector('#menuBoyButton')],
           ['#menuGirlButton', !!document.querySelector('#menuGirlButton')],
+          ['#menuActionView', !!document.querySelector('#menuActionView')],
+          ['#mapButton', !!document.querySelector('#mapButton')],
+          ['#menuWorldView', !!document.querySelector('#menuWorldView')],
+          ['#worldOneButton', !!document.querySelector('#worldOneButton')],
           ['#startButton', !!document.querySelector('#startButton')],
           ['touch controls', document.querySelectorAll('.touch-controls button').length >= 3]
         ];
+        const overlay = document.querySelector('#menuOverlay');
+        const heroView = document.querySelector('#menuHeroView');
         return {
           href: location.href,
           readyState: document.readyState,
+          menuLoaded: overlay && !overlay.hidden,
+          heroSelectVisible: heroView && !heroView.hidden,
           missing: checks.filter(([, ok]) => !ok).map(([name]) => name)
         };
-      })()`
-    }, sessionId);
+      })()`);
 
-    const smoke = result.value;
-    assert(smoke.href.startsWith('http://127.0.0.1:'), `Expected local server URL, got ${smoke.href}`);
-    assert(smoke.readyState === 'complete', `Expected document readyState complete, got ${smoke.readyState}`);
-    assert(smoke.missing.length === 0, `Missing expected elements: ${smoke.missing.join(', ')}`);
+      assert(boot.href.startsWith('http://127.0.0.1:'), `Expected local server URL at ${viewport.name}, got ${boot.href}`);
+      assert(boot.readyState === 'complete', `Expected document readyState complete at ${viewport.name}, got ${boot.readyState}`);
+      assert(boot.missing.length === 0, `Missing expected elements at ${viewport.name}: ${boot.missing.join(', ')}`);
+      assert(boot.menuLoaded, `Menu overlay did not load at ${viewport.name}.`);
+      assert(boot.heroSelectVisible, `Hero select was not visible at ${viewport.name}.`);
+
+      let action = await click(cdp, sessionId, '#menuBoyButton');
+      assert(action.ok, `Could not click Boy hero at ${viewport.name}: ${action.reason || 'unknown'}`);
+      await waitForCondition(
+        cdp,
+        sessionId,
+        `(() => {
+          const actionView = document.querySelector('#menuActionView');
+          return !!actionView && !actionView.hidden;
+        })()`,
+        `Action menu did not open at ${viewport.name}.`
+      );
+
+      action = await click(cdp, sessionId, '#mapButton');
+      assert(action.ok, `Could not click World Select at ${viewport.name}: ${action.reason || 'unknown'}`);
+      await waitForCondition(
+        cdp,
+        sessionId,
+        `(() => {
+          const worldView = document.querySelector('#menuWorldView');
+          const worldOne = document.querySelector('#worldOneButton');
+          return !!worldView && !worldView.hidden && !!worldOne && !worldOne.disabled;
+        })()`,
+        `World Select did not open with a playable World 1 card at ${viewport.name}.`
+      );
+
+      action = await click(cdp, sessionId, '#backToActionsButton');
+      assert(action.ok, `Could not click World Select back button at ${viewport.name}: ${action.reason || 'unknown'}`);
+      await waitForCondition(
+        cdp,
+        sessionId,
+        `(() => {
+          const actionView = document.querySelector('#menuActionView');
+          return !!actionView && !actionView.hidden;
+        })()`,
+        `Action menu did not reopen from World Select at ${viewport.name}.`
+      );
+
+      action = await click(cdp, sessionId, '#startButton');
+      assert(action.ok, `Could not click Start Adventure at ${viewport.name}: ${action.reason || 'unknown'}`);
+      await waitForCondition(
+        cdp,
+        sessionId,
+        `(() => document.querySelector('.game-wrap')?.classList.contains('play-mode'))()`,
+        `Gameplay did not start at ${viewport.name}.`
+      );
+
+      const gameplay = await evaluate(cdp, sessionId, `(() => {
+        const controls = [...document.querySelectorAll('.touch-controls button')];
+        const visibleControls = controls.filter(button => {
+          const style = getComputedStyle(button);
+          return style.display !== 'none' && style.visibility !== 'hidden';
+        });
+        const overlay = document.querySelector('#menuOverlay');
+        return {
+          touchButtonCount: controls.length,
+          visibleTouchButtonCount: visibleControls.length,
+          menuHidden: !!overlay && overlay.hidden,
+          playMode: document.querySelector('.game-wrap')?.classList.contains('play-mode') || false
+        };
+      })()`);
+      assert(gameplay.playMode, `Game wrapper is not in play mode at ${viewport.name}.`);
+      assert(gameplay.menuHidden, `Menu overlay is still visible during gameplay at ${viewport.name}.`);
+      assert(gameplay.touchButtonCount >= 3, `Expected touch controls in gameplay at ${viewport.name}.`);
+      if (viewport.mobile) {
+        assert(gameplay.visibleTouchButtonCount >= 3, `Expected visible touch controls on mobile gameplay at ${viewport.name}.`);
+      }
+    }
+
     assert(pageErrors.length === 0, `Uncaught page errors during boot:\n${pageErrors.join('\n')}`);
+    assert(consoleErrors.length === 0, `Console errors during smoke:\n${consoleErrors.join('\n')}`);
 
     cdp.close();
-    console.log('Browser smoke passed.');
+    console.log(`Browser smoke passed for ${viewports.map(viewport => viewport.name).join(', ')}.`);
   } finally {
     browser.kill();
     await waitForExit(browser);

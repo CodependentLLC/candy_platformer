@@ -16,8 +16,11 @@
   const menuGirlButton = document.getElementById('menuGirlButton');
   const menuHeroView = document.getElementById('menuHeroView');
   const menuActionView = document.getElementById('menuActionView');
+  const menuWorldView = document.getElementById('menuWorldView');
   const menuSelectedHeroText = document.getElementById('menuSelectedHeroText');
   const backToHeroButton = document.getElementById('backToHeroButton');
+  const backToActionsButton = document.getElementById('backToActionsButton');
+  const worldOneButton = document.getElementById('worldOneButton');
   const soundButton = document.getElementById('soundButton');
   const fullscreenButton = document.getElementById('fullscreenButton');
   const pauseButton = document.getElementById('pauseButton');
@@ -145,10 +148,14 @@
 
   function updateMenuStep() {
     const heroScreen = menuStep === 'hero';
+    const worldScreen = menuStep === 'world';
+    const actionScreen = !heroScreen && !worldScreen;
     menuHeroView.hidden = !heroScreen;
-    menuActionView.hidden = heroScreen;
+    menuActionView.hidden = !actionScreen;
+    menuWorldView.hidden = !worldScreen;
     menuOverlay.classList.toggle('menu-hero-step', heroScreen);
-    menuOverlay.classList.toggle('menu-action-step', !heroScreen);
+    menuOverlay.classList.toggle('menu-action-step', actionScreen);
+    menuOverlay.classList.toggle('menu-world-step', worldScreen);
   }
 
   function updateUiMode() {
@@ -856,10 +863,12 @@
   menuGirlButton.addEventListener('click', () => { setHero('girl'); openMenuActions(); sound('click'); });
   resumeButton.addEventListener('click', resumeRun);
   startButton.addEventListener('click', startAdventure);
-  mapButton.addEventListener('click', openWorldMap);
+  mapButton.addEventListener('click', () => { menuStep = 'world'; updateUiMode(); sound('click'); });
+  worldOneButton.addEventListener('click', openWorldMap);
   sideStagesButton.addEventListener('click', openSideStagesMap);
   resetProgressButton.addEventListener('click', resetProgressAndReturnToMenu);
   backToHeroButton.addEventListener('click', () => { menuStep = 'hero'; updateUiMode(); sound('click'); });
+  backToActionsButton.addEventListener('click', () => { menuStep = 'actions'; updateUiMode(); sound('click'); });
 
   soundButton.addEventListener('click', () => {
     soundOn = !soundOn;
@@ -2145,13 +2154,32 @@
     ctx.save();
     ctx.globalAlpha = reveal;
     ctx.textAlign = 'center';
-    ctx.strokeStyle = 'rgba(240,178,207,.82)';
-    ctx.lineWidth = compact ? 8 : 10;
     ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(nodeLayout[0].x, nodeLayout[0].y);
-    for (let i = 1; i < nodeLayout.length; i++) ctx.lineTo(nodeLayout[i].x, nodeLayout[i].y);
-    ctx.stroke();
+    if (compact) {
+      roundRect(24, 18, 238, 34, 15, 'rgba(255,248,239,.76)', 'rgba(255,255,255,.76)');
+      ctx.fillStyle = '#d83787';
+      ctx.font = '900 13px system-ui';
+      ctx.fillText('World 1: Candy Meadow', 143, 40);
+    }
+    for (let i = 1; i < nodeLayout.length; i++) {
+      const from = nodeLayout[i - 1];
+      const to = nodeLayout[i];
+      const openSegment = i <= unlockedLevel;
+      ctx.strokeStyle = openSegment ? 'rgba(255,186,218,.94)' : 'rgba(255,255,255,.30)';
+      ctx.lineWidth = compact ? (openSegment ? 10 : 8) : (openSegment ? 11 : 9);
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
+      if (openSegment) {
+        ctx.strokeStyle = 'rgba(255,248,239,.72)';
+        ctx.lineWidth = compact ? 4 : 5;
+        ctx.beginPath();
+        ctx.moveTo(from.x, from.y);
+        ctx.lineTo(to.x, to.y);
+        ctx.stroke();
+      }
+    }
 
     for (const branch of branchLayout) {
       if (branch.levelIndex > unlockedLevel) continue;
@@ -2196,22 +2224,22 @@
       const medals = medalProgress[index] || { swift: false, steady: false, specialist: false };
       const plateFill = unlocked ? node.plate : 'rgba(240,234,238,.76)';
       const ringFill = unlocked ? node.color : '#d8c8d0';
-      const plateW = compact ? 56 : 62;
-      const plateH = compact ? 52 : 58;
-      const iconSize = compact ? (node.icon === 'candy_arch' ? 28 : 20) : (node.icon === 'candy_arch' ? 34 : 24);
+      const plateW = compact ? (isNext ? 72 : 64) : 62;
+      const plateH = compact ? (isNext ? 64 : 58) : 58;
+      const iconSize = compact ? (node.icon === 'candy_arch' ? 32 : 23) : (node.icon === 'candy_arch' ? 34 : 24);
 
       roundRect(pos.x - plateW / 2, pos.y - plateH / 2, plateW, plateH, compact ? 18 : 20, plateFill, 'rgba(90,46,32,.12)');
       ctx.fillStyle = ringFill;
       ctx.beginPath();
-      ctx.arc(pos.x, pos.y - 2, compact ? (isNext ? 18 : 15) : (isNext ? 21 : 18), 0, Math.PI * 2);
+      ctx.arc(pos.x, pos.y - 2, compact ? (isNext ? 21 : 17) : (isNext ? 21 : 18), 0, Math.PI * 2);
       ctx.fill();
 
       if (unlocked) {
         drawImageCentered(assets[node.icon], pos.x, pos.y - 4, iconSize);
-        drawImageCentered(assets[node.badge], pos.x + (compact ? 12 : 14), pos.y - (compact ? 14 : 16), compact ? 11 : 13);
+        drawImageCentered(assets[node.badge], pos.x + (compact ? 15 : 14), pos.y - (compact ? 16 : 16), compact ? 12 : 13);
       } else {
         ctx.fillStyle = '#8f7f88';
-        ctx.font = compact ? '900 10px system-ui' : '900 11px system-ui';
+        ctx.font = compact ? '900 11px system-ui' : '900 11px system-ui';
         ctx.fillText('LOCK', pos.x, pos.y + 2);
       }
 
@@ -2228,18 +2256,18 @@
 
       if (isNext) {
         ctx.strokeStyle = '#fff27a';
-        ctx.lineWidth = compact ? 4 : 5;
+        ctx.lineWidth = compact ? 5 : 5;
         ctx.beginPath();
-        ctx.arc(pos.x, pos.y - 2, compact ? 22 + Math.sin(mapPulse) * 1.5 : 25 + Math.sin(mapPulse) * 2, 0, Math.PI * 2);
+        ctx.arc(pos.x, pos.y - 2, compact ? 27 + Math.sin(mapPulse) * 1.6 : 25 + Math.sin(mapPulse) * 2, 0, Math.PI * 2);
         ctx.stroke();
       }
 
-      const badgeStep = compact ? 11 : 13;
-      const badgeY = pos.y + pos.labelDy - (compact ? 9 : 10);
+      const badgeStep = compact ? 13 : 13;
+      const badgeY = pos.y + pos.labelDy - (compact ? 11 : 10);
       for (let badgeIndex = 0; badgeIndex < specialTotal; badgeIndex++) {
         const badgeX = pos.x + (badgeIndex - (specialTotal - 1) / 2) * badgeStep;
         if (badgeIndex < specialFound) {
-          drawImageCentered(assets[node.stamp], badgeX, badgeY, compact ? 8 : 10);
+          drawImageCentered(assets[node.stamp], badgeX, badgeY, compact ? 9 : 10);
         } else {
           ctx.save();
           ctx.globalAlpha = 0.28;
@@ -2251,10 +2279,10 @@
         }
       }
 
-      roundRect(pos.x - (compact ? 26 : 28), pos.y + pos.labelDy, compact ? 52 : 58, 15, 8, 'rgba(255,248,239,.72)', 'rgba(90,46,32,.10)');
-      ctx.fillStyle = '#5a2e20';
-      ctx.font = compact ? '800 9px system-ui' : '800 10px system-ui';
-      ctx.fillText(node.label, pos.x, pos.y + pos.labelDy + 11);
+      roundRect(pos.x - (compact ? 34 : 28), pos.y + pos.labelDy, compact ? 68 : 58, compact ? 18 : 15, 9, isNext ? 'rgba(255,242,122,.90)' : 'rgba(255,248,239,.78)', isNext ? 'rgba(216,55,135,.20)' : 'rgba(90,46,32,.10)');
+      ctx.fillStyle = unlocked ? '#5a2e20' : '#7f7078';
+      ctx.font = compact ? '900 11px system-ui' : '800 10px system-ui';
+      ctx.fillText(node.label, pos.x, pos.y + pos.labelDy + (compact ? 13 : 11));
 
       const medalY = pos.y - (compact ? 20 : 24);
       const medalXStart = pos.x - (compact ? 14 : 18);
@@ -2278,12 +2306,12 @@
       const branchUnlocked = rewardRouteUnlocked(branch.levelIndex);
       const branchSelected = mapMarkerToIndex === branchNodeId(branch.levelIndex);
       const branchHint = mapBranchHintTimer > 0;
-      const plateW = compact ? 48 : 54;
-      const plateH = compact ? 38 : 42;
+      const plateW = compact ? 54 : 54;
+      const plateH = compact ? 44 : 42;
       roundRect(branch.x - plateW / 2, branch.y - plateH / 2, plateW, plateH, compact ? 15 : 17, branchUnlocked ? branch.plate : 'rgba(240,234,238,.78)', 'rgba(90,46,32,.10)');
       ctx.fillStyle = branchUnlocked ? branch.color : '#d8c8d0';
       ctx.beginPath();
-      ctx.arc(branch.x, branch.y - 4, compact ? 12 : 14, 0, Math.PI * 2);
+      ctx.arc(branch.x, branch.y - 4, compact ? 14 : 14, 0, Math.PI * 2);
       ctx.fill();
       if (branchHint) {
         ctx.save();
@@ -2302,19 +2330,19 @@
         ctx.stroke();
       }
       if (branchUnlocked) {
-        drawImageCentered(assets[branch.icon], branch.x, branch.y - 5, compact ? 15 : 18);
+        drawImageCentered(assets[branch.icon], branch.x, branch.y - 5, compact ? 17 : 18);
       } else {
         ctx.fillStyle = '#8f7f88';
-        ctx.font = compact ? '900 8px system-ui' : '900 9px system-ui';
+        ctx.font = compact ? '900 9px system-ui' : '900 9px system-ui';
         ctx.fillText('LOCK', branch.x, branch.y - 1);
       }
-      roundRect(branch.x - (compact ? 26 : 30), branch.y + (compact ? 14 : 16), compact ? 52 : 60, compact ? 12 : 13, 6, 'rgba(255,248,239,.76)', 'rgba(90,46,32,.08)');
+      roundRect(branch.x - (compact ? 31 : 30), branch.y + (compact ? 17 : 16), compact ? 62 : 60, compact ? 15 : 13, 7, 'rgba(255,248,239,.82)', 'rgba(90,46,32,.08)');
       ctx.fillStyle = '#5a2e20';
-      ctx.font = compact ? '800 7px system-ui' : '800 8px system-ui';
-      ctx.fillText(branch.label, branch.x, branch.y + (compact ? 22 : 25));
+      ctx.font = compact ? '800 9px system-ui' : '800 8px system-ui';
+      ctx.fillText(branch.label, branch.x, branch.y + (compact ? 28 : 25));
       ctx.fillStyle = !branchUnlocked ? '#8f7f88' : worldDone ? '#d83787' : '#a45627';
       ctx.font = compact ? '900 6px system-ui' : '900 7px system-ui';
-      ctx.fillText(!branchUnlocked ? 'LOCK' : worldDone ? 'OPEN' : 'STAGE', branch.x, branch.y + (compact ? 31 : 35));
+      ctx.fillText(!branchUnlocked ? 'LOCKED' : worldDone ? 'OPEN' : 'SIDE', branch.x, branch.y + (compact ? 39 : 35));
     }
 
     if (globalAllSpecials) {
@@ -2364,21 +2392,21 @@
     }
 
     if (compact) {
-      roundRect(18, H - 72, 220, 54, 12, 'rgba(255,248,239,.66)', '#ffffff');
+      roundRect(W / 2 - 176, H - 102, 352, 72, 16, 'rgba(255,248,239,.82)', '#ffffff');
       ctx.fillStyle = '#5a2e20';
-      ctx.font = '800 10px system-ui';
-      ctx.fillText(getStageData(mapLevelIndex).name, 128, H - 52);
-      ctx.font = '800 9px system-ui';
+      ctx.font = '900 13px system-ui';
+      ctx.fillText(getStageData(mapLevelIndex).name, W / 2, H - 78);
+      ctx.font = '800 11px system-ui';
       const routeText = isBonusNodeId(mapMarkerToIndex) ? 'Hidden world open' : isBranchNodeId(mapMarkerToIndex) ? 'Side stage ready' : rewardRouteUnlocked(mapLevelIndex) ? 'Side stage open' : 'Main trail active';
-      ctx.fillText(routeText, 128, H - 38);
-      ctx.font = '700 8px system-ui';
+      ctx.fillText(routeText, W / 2, H - 60);
+      ctx.font = '800 9px system-ui';
       ctx.fillStyle = '#7a3c65';
-      ctx.fillText(mapBranchHintTimer > 0 ? 'Side stages are pulsing on the map' : 'Unlock side stages by finding all specials in that world.', 128, H - 24, W - 260);
+      ctx.fillText(mapBranchHintTimer > 0 ? 'Side stages are pulsing on the map.' : 'Tap Jump or Go to play. Unlock side stages by finding all specials.', W / 2, H - 43, 322);
       if (globalAllSpecials) {
-        roundRect(W - 182, H - 54, 160, 34, 12, 'rgba(255,248,239,.72)', '#ffffff');
+        roundRect(W - 188, 18, 164, 34, 12, 'rgba(255,248,239,.78)', '#ffffff');
         ctx.fillStyle = '#d83787';
         ctx.font = '900 10px system-ui';
-        ctx.fillText('Secret Badge Ready', W - 102, H - 32);
+        ctx.fillText('Secret Badge Ready', W - 106, 40);
       }
     } else if (globalAllSpecials) {
       roundRect(W - 248, 18, 204, 36, 14, 'rgba(255,248,239,.72)', '#ffffff');

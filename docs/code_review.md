@@ -60,7 +60,21 @@ For UI/CSS changes, check:
 - Safe-area inset handling is preserved.
 - Buttons remain large enough to tap.
 - Menu, map, play, ending, and game-over modes update visible UI correctly.
+- Menus and World Select work in phone portrait.
+- Active gameplay is readable and playable in phone landscape.
+- Touch controls do not overlap critical HUD or gameplay space.
+- World-map labels, nodes, locked states, selected marker, and start/play action remain readable on mobile.
 - Fullscreen behavior still works.
+
+Standard mobile/tablet/desktop validation matrix:
+
+- `375x667` phone portrait
+- `390x844` phone portrait
+- `667x375` phone landscape
+- `844x390` phone landscape
+- `768x1024` tablet portrait
+- `1024x768` tablet landscape
+- `1366x768` desktop
 
 ## Accessibility
 
@@ -136,6 +150,7 @@ Useful smoke request:
 Useful validation requests:
 
 - Browser and device tested
+- Viewports checked from the standard mobile/tablet/desktop validation matrix
 - Level or flow tested
 - Whether console errors appeared
 - Whether save data was tested with fresh and existing localStorage

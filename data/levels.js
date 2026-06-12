@@ -22,11 +22,12 @@
         P(940, 300, 78, 18, 'break')
       ],
       candies: [
-        C('bean_red', 152, 404), C('bean_orange', 252, 392), C('star_pink', 455, 346), C('bean_yellow', 590, 368), C('bean_green', 692, 308),
-        C('bean_blue', 748, 404), C('bean_orange', 858, 388), C('star_blue', 896, 308), C('bean_blue', 978, 308), C('bean_purple', 1010, 262),
-        C('star_purple', 1175, 372), C('bean_yellow', 1255, 358), C('bean_green', 1340, 328), C('star_pink', 1410, 332), C('bean_red', 1492, 292),
-        C('bean_red', 1560, 290), C('star_blue', 1760, 374), C('bean_yellow', 1838, 304), C('bean_green', 1880, 246), C('star_pink', 1970, 204),
-        C('star_purple', 2050, 272), C('bean_orange', 2090, 248), C('star_blue', 2120, 272)
+        C('bean_red', 152, 404), C('bean_orange', 252, 392), C('bean_yellow', 360, 386), C('star_pink', 455, 346), C('bean_yellow', 590, 368),
+        C('bean_green', 692, 308), C('bean_blue', 748, 404), C('bean_orange', 858, 388), C('star_blue', 896, 308), C('bean_blue', 960, 292),
+        C('bean_purple', 1010, 262), C('star_purple', 1175, 372), C('bean_yellow', 1255, 358), C('bean_green', 1340, 328), C('star_pink', 1410, 332),
+        C('bean_red', 1492, 292), C('bean_red', 1560, 290), C('bean_blue', 1660, 360), C('star_blue', 1760, 374), C('bean_yellow', 1838, 304),
+        C('bean_green', 1880, 246), C('star_pink', 1970, 204), C('bean_purple', 2020, 220), C('star_purple', 2050, 272), C('bean_orange', 2090, 248),
+        C('star_blue', 2120, 272)
       ],
       specials: [S('star_pink', 796, 232), S('star_blue', 1048, 222), S('star_purple', 2015, 196)],
       enemies: [E(770, 320, 'gummy', 150), E(1320, 386, 'marsh', 120), E(1880, 254, 'gummy', 100)],
@@ -55,9 +56,10 @@
         P(2310, 330, 150, 20, 'choco'), P(2390, 420, 170, 80, 'icing'), P(1210, 300, 78, 18, 'break'), P(2000, 330, 82, 18, 'break')
       ],
       candies: [
-        C('star_blue', 135, 406), C('bean_purple', 355, 370), C('bean_green', 430, 370), C('star_purple', 595, 328), C('bean_yellow', 950, 278),
-        C('bean_red', 1015, 278), C('star_pink', 1218, 258), C('bean_blue', 1188, 348), C('star_blue', 1360, 348), C('bean_purple', 1510, 308),
-        C('star_pink', 1710, 256), C('bean_green', 1770, 256), C('star_purple', 1980, 384), C('bean_orange', 2190, 334), C('star_blue', 2350, 284)
+        C('star_blue', 135, 406), C('bean_purple', 355, 370), C('bean_green', 430, 370), C('star_purple', 595, 328), C('bean_orange', 760, 294),
+        C('bean_yellow', 950, 278), C('bean_red', 1015, 278), C('bean_purple', 1138, 350), C('star_pink', 1218, 258), C('bean_blue', 1188, 348),
+        C('star_blue', 1360, 348), C('bean_purple', 1510, 308), C('bean_blue', 1638, 260), C('star_pink', 1710, 256), C('bean_green', 1770, 256),
+        C('bean_yellow', 1888, 364), C('star_purple', 1980, 384), C('bean_red', 2088, 352), C('bean_orange', 2190, 334), C('star_blue', 2350, 284)
       ],
       specials: [S('star_purple', 665, 242), S('star_blue', 828, 188), S('star_pink', 1818, 162)],
       enemies: [E(390, 378, 'beetle', 110), E(760, 290, 'gummy', 120), E(1490, 316, 'marsh', 120), E(2200, 342, 'jaw', 100)],
