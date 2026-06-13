@@ -13,6 +13,7 @@ loadBrowserScript('data/levels.js');
 loadBrowserScript('data/worlds.js');
 loadBrowserScript('data/world-map.js');
 
+const { PLATFORM_KIND_ALIASES = {} } = context.window.CandyQuestShapes || {};
 const { LEVELS, BONUS_STAGES } = context.window.CandyQuestLevels || {};
 const { WORLDS } = context.window.CandyQuestWorlds || {};
 const {
@@ -37,6 +38,11 @@ const STAGE_ID_PATTERN = /^world-[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ignoredSupportKinds = new Set(['sugarGate', 'blinkGate', 'break']);
 const failures = [];
 const warnings = [];
+
+function platformBehaviorKind(platformOrKind) {
+  const kind = typeof platformOrKind === 'string' ? platformOrKind : platformOrKind?.kind;
+  return PLATFORM_KIND_ALIASES[kind] || kind;
+}
 
 function fail(stage, message) {
   failures.push(`${stage.label}: ${message}`);
@@ -68,7 +74,7 @@ function stageList() {
 }
 
 function supportPlatforms(stage) {
-  return (stage.platforms || []).filter(platform => platform && !ignoredSupportKinds.has(platform.kind));
+  return (stage.platforms || []).filter(platform => platform && !ignoredSupportKinds.has(platformBehaviorKind(platform)));
 }
 
 function platformXRange(platform) {
@@ -230,6 +236,17 @@ function checkWorldData(stageIds, mapIds = new Set()) {
   }
 }
 
+function checkMapNodeStage(label, node, fallbackMainIndex, stageIds) {
+  if (node.stageId && !stageIds.has(node.stageId)) failGlobal(`${label}: references unknown stage id "${node.stageId}".`);
+  if (Number.isInteger(node.stageIndex)) {
+    if (node.stageIndex < 0 || node.stageIndex >= LEVELS.length + BONUS_STAGES.length) {
+      failGlobal(`${label}: stageIndex must reference a valid current stage.`);
+    }
+    return;
+  }
+  if (!node.stageId && !LEVELS[fallbackMainIndex]) failGlobal(`${label}: has no matching main level stage.`);
+}
+
 function checkMapData(stageIds) {
   if (!WORLD_MAPS || typeof WORLD_MAPS !== 'object' || Array.isArray(WORLD_MAPS)) {
     failGlobal('CandyQuestMap.WORLD_MAPS must be an object keyed by map id.');
@@ -266,9 +283,7 @@ function checkMapData(stageIds) {
     const branchNodes = Array.isArray(map.branchNodes) ? map.branchNodes : [];
     mainNodes.forEach((node, index) => {
       const nodeLabel = `${label} main node ${index}`;
-      const inferredStage = LEVELS[index];
-      if (node.stageId && !stageIds.has(node.stageId)) failGlobal(`${nodeLabel}: references unknown stage id "${node.stageId}".`);
-      if (!node.stageId && !inferredStage) failGlobal(`${nodeLabel}: has no matching main level stage.`);
+      checkMapNodeStage(nodeLabel, node, index, stageIds);
       for (const key of ['x', 'y', 'mobileX', 'mobileY']) checkNumber(`${nodeLabel}.${key}`, node[key]);
     });
     branchNodes.forEach((node, index) => {
@@ -292,9 +307,7 @@ function checkMapData(stageIds) {
 
   WORLD_MAP_NODES.forEach((node, index) => {
     const label = `World map main node ${index}`;
-    const inferredStage = LEVELS[index];
-    if (node.stageId && !stageIds.has(node.stageId)) failGlobal(`${label}: references unknown stage id "${node.stageId}".`);
-    if (!node.stageId && !inferredStage) failGlobal(`${label}: has no matching main level stage.`);
+    checkMapNodeStage(label, node, index, stageIds);
     for (const key of ['x', 'y', 'mobileX', 'mobileY']) checkNumber(`${label}.${key}`, node[key]);
     if (!isNumber(node.mobileLabelDy)) warnGlobal(`${label}: missing numeric mobileLabelDy.`);
   });

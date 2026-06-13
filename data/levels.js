@@ -15,12 +15,12 @@
       goal: { x: 2150, y: 250 },
       decor: [D(694, 360, 'lollipop_swirl', { h: 84, alpha: 0.82 }), D(922, 236, 'candy_arch', { h: 66, alpha: 0.42 }), D(1964, 206, 'lollipop_green', { h: 72, alpha: 0.78 })],
       platforms: [
-        P(0, 452, 360, 80, 'icing'), P(220, 452, 360, 80, 'icing'), P(520, 410, 120, 28, 'icing'), P(640, 452, 210, 80, 'icing'), P(860, 420, 100, 24, 'icing'), P(420, 392, 160, 22, 'cookie'),
-        V(520, 386, 116, 18, 354, 398, 0.42, 'float'), V(640, 352, 150, 20, 320, 372, 0.55, 'float'), P(740, 274, 110, 18, 'cookie'), P(860, 228, 110, 18, 'icing'),
-        P(850, 352, 240, 20, 'cookie'), P(1000, 262, 92, 18, 'cookie'), P(1130, 420, 220, 24, 'cookie'),
-        B(1220, 402, 80), V(1332, 350, 112, 18, 318, 362, 0.48, 'float'), P(1452, 322, 126, 18, 'cookie'), P(1540, 338, 140, 20, 'cookie'),
-        P(1700, 420, 280, 90, 'icing'), V(1838, 282, 112, 18, 244, 296, 0.56, 'float'), P(1960, 238, 110, 18, 'icing'), P(2020, 318, 120, 18, 'cookie'),
-        P(940, 300, 78, 18, 'break')
+        P(0, 452, 360, 80, 'lollipopStick'), P(220, 452, 360, 80, 'lollipopStick'), P(520, 410, 120, 28, 'candyDisc'), P(640, 452, 210, 80, 'lollipopStick'), P(860, 420, 100, 24, 'candyDisc'), P(420, 392, 160, 22, 'lollipopChip'),
+        V(520, 386, 116, 18, 354, 398, 0.42, 'swirlLift'), V(640, 352, 150, 20, 320, 372, 0.55, 'swirlLift'), P(740, 274, 110, 18, 'lollipopChip'), P(860, 228, 110, 18, 'candyDisc'),
+        P(850, 352, 240, 20, 'lollipopChip'), P(1000, 262, 92, 18, 'lollipopChip'), P(1130, 420, 220, 24, 'lollipopChip'),
+        B(1220, 402, 80), V(1332, 350, 112, 18, 318, 362, 0.48, 'swirlLift'), P(1452, 322, 126, 18, 'lollipopChip'), P(1540, 338, 140, 20, 'lollipopChip'),
+        P(1700, 420, 280, 90, 'lollipopStick'), V(1838, 282, 112, 18, 244, 296, 0.56, 'swirlLift'), P(1960, 238, 110, 18, 'candyDisc'), P(2020, 318, 120, 18, 'lollipopChip'),
+        P(940, 300, 78, 18, 'candyCrumble')
       ],
       candies: [
         C('bean_red', 152, 404), C('bean_orange', 252, 392), C('bean_yellow', 360, 386), C('star_pink', 455, 346), C('bean_yellow', 590, 368),
@@ -50,12 +50,12 @@
       goal: { x: 2410, y: 275 },
       decor: [D(632, 258, 'lollipop_orange', { h: 68, alpha: 0.64 }), D(1772, 178, 'candy_arch', { h: 62, alpha: 0.38 }), D(2248, 224, 'lollipop_purple', { h: 70, alpha: 0.72 })],
       platforms: [
-        P(0, 452, 290, 80, 'choco'), P(320, 412, 165, 22, 'cookie'), P(540, 372, 145, 20, 'tilt'), P(610, 284, 110, 18, 'wafer'),
-        P(730, 332, 135, 20, 'tilt'), P(780, 232, 110, 18, 'cookie'), M(910, 320, 128, 22, 910, 1090, 1.2),
-        P(1145, 392, 155, 20, 'cookie'), B(1320, 392, 80), P(1450, 350, 150, 20, 'tilt'),
-        P(1605, 248, 110, 18, 'wafer'), M(1660, 300, 128, 22, 1660, 1860, 1.25), P(1768, 206, 100, 18, 'tilt'),
-        P(1886, 402, 96, 18, 'cookie'), P(1998, 390, 92, 18, 'cookie'), P(2106, 378, 92, 18, 'cookie'), P(2214, 366, 92, 18, 'cookie'), P(2230, 252, 110, 18, 'choco'),
-        P(2310, 330, 150, 20, 'choco'), P(2390, 420, 170, 80, 'icing'), P(1210, 300, 78, 18, 'break'), P(2000, 330, 82, 18, 'break')
+        P(0, 452, 290, 80, 'candyRoad'), P(320, 412, 165, 22, 'pretzelCrumble'), P(540, 372, 145, 20, 'pretzelTilt'), P(610, 284, 110, 18, 'licoriceRail'),
+        P(730, 332, 135, 20, 'pretzelTilt'), P(780, 232, 110, 18, 'pretzelCrumble'), P(910, 320, 128, 22, 'licoriceMover', { minX: 910, maxX: 1090, speed: 1.2, dir: 1 }),
+        P(1145, 392, 155, 20, 'pretzelCrumble'), B(1320, 392, 80), P(1450, 350, 150, 20, 'pretzelTilt'),
+        P(1605, 248, 110, 18, 'licoriceRail'), P(1660, 300, 128, 22, 'licoriceMover', { minX: 1660, maxX: 1860, speed: 1.25, dir: 1 }), P(1768, 206, 100, 18, 'pretzelTilt'),
+        P(1886, 402, 96, 18, 'pretzelCrumble'), P(1998, 390, 92, 18, 'pretzelCrumble'), P(2106, 378, 92, 18, 'pretzelCrumble'), P(2214, 366, 92, 18, 'pretzelCrumble'), P(2230, 252, 110, 18, 'candyRoad'),
+        P(2310, 330, 150, 20, 'candyRoad'), P(2390, 420, 170, 80, 'pretzelBridge'), P(1210, 300, 78, 18, 'pretzelBreak'), P(2000, 330, 82, 18, 'pretzelBreak')
       ],
       candies: [
         C('star_blue', 135, 406), C('bean_purple', 355, 370), C('bean_green', 430, 370), C('star_purple', 595, 328), C('bean_orange', 760, 294),
@@ -83,12 +83,12 @@
       goal: { x: 2705, y: 248 },
       decor: [D(1450, 220, 'candy_arch', { h: 70, alpha: 0.38 }), D(2068, 214, 'lollipop_sprinkle', { h: 74, alpha: 0.74 }), D(2310, 176, 'lollipop_green', { h: 70, alpha: 0.68 })],
       platforms: [
-        P(0, 452, 280, 80, 'icing'), P(320, 408, 155, 22, 'choco'), P(520, 365, 160, 20, 'cookie'), B(730, 395, 80),
-        P(860, 430, 170, 22, 'icing'), R(952, 446, 132, 952, 1224, 1.02), P(1094, 392, 116, 18, 'slide', { slideDir: 0.22 }), M(1100, 368, 130, 22, 1100, 1270, 1.15), P(1320, 330, 150, 20, 'slide', { slideDir: 0.26 }),
-        P(1448, 246, 108, 18, 'icing'), P(1598, 210, 102, 18, 'icing'), P(1712, 176, 100, 18, 'icing'),
-        P(1540, 392, 180, 22, 'icing'), B(1775, 392, 82), P(1930, 350, 160, 20, 'cookie'), P(2060, 238, 100, 18, 'slide', { slideDir: 0.24 }),
-        M(2175, 300, 132, 22, 2175, 2365, 1.3), P(2295, 206, 100, 18, 'slide', { slideDir: 0.3 }), P(2408, 168, 96, 18, 'slide', { slideDir: 0.28 }),
-        P(2410, 256, 120, 20, 'icing'), P(2570, 306, 120, 20, 'icing'), P(2650, 420, 220, 84, 'icing'), P(1460, 286, 82, 18, 'break'), P(2050, 304, 82, 18, 'break')
+        P(0, 452, 280, 80, 'frostingLedge'), P(320, 408, 155, 22, 'frozenCreamShelf'), P(520, 365, 160, 20, 'coneShelf'), P(730, 395, 80, 18, 'iceCreamScoop'),
+        P(860, 430, 170, 22, 'frostingLedge'), P(952, 446, 132, 18, 'coneRaft', { minX: 952, maxX: 1224, speed: 1.02, dir: 1 }), P(1094, 392, 116, 18, 'slickCreamSlide', { slideDir: 0.22 }), P(1100, 368, 130, 22, 'creamMover', { minX: 1100, maxX: 1270, speed: 1.15, dir: 1 }), P(1320, 330, 150, 20, 'slickCreamSlide', { slideDir: 0.26 }),
+        P(1448, 246, 108, 18, 'frostingLedge'), P(1598, 210, 102, 18, 'frostingLedge'), P(1712, 176, 100, 18, 'frostingLedge'),
+        P(1540, 392, 180, 22, 'frostingLedge'), P(1775, 392, 82, 18, 'iceCreamScoop'), P(1930, 350, 160, 20, 'coneShelf'), P(2060, 238, 100, 18, 'slickCreamSlide', { slideDir: 0.24 }),
+        P(2175, 300, 132, 22, 'creamMover', { minX: 2175, maxX: 2365, speed: 1.3, dir: 1 }), P(2295, 206, 100, 18, 'slickCreamSlide', { slideDir: 0.3 }), P(2408, 168, 96, 18, 'slickCreamSlide', { slideDir: 0.28 }),
+        P(2410, 256, 120, 20, 'frostingLedge'), P(2570, 306, 120, 20, 'frostingLedge'), P(2650, 420, 220, 84, 'frostingLedge'), P(1460, 286, 82, 18, 'frozenBreak'), P(2050, 304, 82, 18, 'frozenBreak')
       ],
       candies: [
         C('star_pink', 140, 406), C('bean_green', 360, 366), C('bean_blue', 420, 366), C('star_blue', 565, 320), C('bean_purple', 742, 350),
@@ -115,12 +115,12 @@
       goal: { x: 2940, y: 230 },
       decor: [D(1208, 228, 'candy_arch', { h: 64, alpha: 0.40 }), D(1692, 306, 'lollipop_orange', { h: 68, alpha: 0.72 }), D(2508, 218, 'candy_arch', { h: 60, alpha: 0.36 })],
       platforms: [
-        P(0, 452, 280, 80, 'wafer'), P(320, 414, 150, 22, 'cookie'), P(520, 378, 130, 20, 'syrup'), P(700, 338, 130, 20, 'cookie'),
-        M(900, 310, 130, 22, 900, 1070, 1.15), P(1100, 388, 160, 22, 'choco'), P(1180, 258, 110, 18, 'wafer'), P(1325, 348, 150, 20, 'cookie'),
-        P(1336, 214, 108, 18, 'wafer'), B(1510, 392, 82), P(1660, 338, 145, 20, 'syrup'), P(1748, 234, 108, 18, 'wafer'),
-        M(1870, 284, 128, 22, 1870, 2040, 1.2), P(2090, 420, 190, 22, 'syrup'), P(2204, 246, 104, 18, 'wafer'), P(2320, 372, 150, 20, 'cookie'),
-        B(2525, 372, 80), P(2485, 250, 104, 18, 'wafer'), P(2660, 316, 130, 20, 'syrup'), P(2830, 272, 125, 20, 'syrup'), P(2900, 420, 180, 82, 'icing'),
-        P(1215, 306, 82, 18, 'break'), P(2170, 328, 82, 18, 'break'), P(2725, 262, 82, 18, 'break')
+        P(0, 452, 280, 80, 'waffleTile'), P(320, 414, 150, 22, 'forestCookieStep'), P(520, 378, 130, 20, 'syrupPatch'), P(700, 338, 130, 20, 'forestCookieStep'),
+        P(900, 310, 130, 22, 'movingWaffleShelf', { minX: 900, maxX: 1070, speed: 1.15, dir: 1 }), P(1100, 388, 160, 22, 'candyForestLedge'), P(1180, 258, 110, 18, 'waferBridge'), P(1325, 348, 150, 20, 'forestCookieStep'),
+        P(1336, 214, 108, 18, 'waferBridge'), P(1510, 392, 82, 18, 'syrupSpring'), P(1660, 338, 145, 20, 'syrupPatch'), P(1748, 234, 108, 18, 'waferBridge'),
+        P(1870, 284, 128, 22, 'movingWaffleShelf', { minX: 1870, maxX: 2040, speed: 1.2, dir: 1 }), P(2090, 420, 190, 22, 'syrupPatch'), P(2204, 246, 104, 18, 'waferBridge'), P(2320, 372, 150, 20, 'forestCookieStep'),
+        P(2525, 372, 80, 18, 'syrupSpring'), P(2485, 250, 104, 18, 'waferBridge'), P(2660, 316, 130, 20, 'syrupPatch'), P(2830, 272, 125, 20, 'syrupPatch'), P(2900, 420, 180, 82, 'candyForestLedge'),
+        P(1215, 306, 82, 18, 'waffleBreak'), P(2170, 328, 82, 18, 'waffleBreak'), P(2725, 262, 82, 18, 'waffleBreak')
       ],
       candies: [
         C('star_blue', 136, 406), C('bean_red', 352, 376), C('bean_orange', 430, 376), C('star_pink', 560, 336), C('bean_green', 742, 300),
@@ -147,12 +147,12 @@
       goal: { x: 3220, y: 210 },
       decor: [D(1522, 266, 'candy_arch', { h: 68, alpha: 0.40 }), D(1810, 146, 'lollipop_pink', { h: 74, alpha: 0.70 }), D(2608, 216, 'candy_arch', { h: 62, alpha: 0.38 })],
       platforms: [
-        P(0, 452, 300, 80, 'icing'), P(350, 418, 165, 22, 'cookie'), P(560, 372, 140, 20, 'choco'), V(760, 352, 116, 18, 320, 372, 0.5, 'elevator'),
-        P(950, 406, 180, 22, 'icing'), B(1160, 392, 80), P(1290, 348, 150, 20, 'cookie'), G(1510, 296, 84, 90),
-        V(1588, 338, 108, 18, 204, 338, 0.78, 'elevator'), TG(1716, 214, 70, 86, 26, 64, 86), M(1680, 308, 132, 22, 1680, 1815, 1.02), P(1762, 204, 106, 18, 'icing'), P(1895, 246, 150, 20, 'cookie'),
-        P(1965, 168, 100, 18, 'cookie'), P(2068, 134, 96, 18, 'icing'), P(2120, 390, 190, 22, 'choco'), V(2268, 338, 112, 18, 286, 338, 0.56, 'elevator'), B(2345, 376, 82), P(2490, 330, 140, 20, 'icing'),
-        P(2574, 236, 96, 18, 'icing'), TG(2700, 274, 82, 88, 0, 64, 78), P(2768, 300, 92, 18, 'icing'), TG(2928, 214, 76, 92, 38, 64, 86), M(2868, 286, 120, 22, 2868, 3005, 1.05), P(3060, 232, 140, 20, 'cookie'),
-        P(3185, 420, 190, 80, 'icing'), P(1030, 306, 82, 18, 'break'), P(2240, 320, 82, 18, 'break')
+        P(0, 452, 300, 80, 'cakeLayer'), P(350, 418, 165, 22, 'sprinkleBridge'), P(560, 372, 140, 20, 'fondantSlab'), P(760, 352, 116, 18, 'cakeElevator', { minY: 320, maxY: 372, speed: 0.5, dir: 1 }),
+        P(950, 406, 180, 22, 'frostingWall'), P(1160, 392, 80, 18, 'sprinkleBounce'), P(1290, 348, 150, 20, 'sprinkleBridge'), P(1510, 296, 84, 90, 'candyCastleGate'),
+        P(1588, 338, 108, 18, 'cakeElevator', { minY: 204, maxY: 338, speed: 0.78, dir: 1 }), P(1716, 214, 70, 86, 'candyBlinkGate', { phase: 26, openFor: 64, closedFor: 86, open: false }), P(1680, 308, 132, 22, 'candyGatePlatform', { minX: 1680, maxX: 1815, speed: 1.02, dir: 1 }), P(1762, 204, 106, 18, 'frostingWall'), P(1895, 246, 150, 20, 'sprinkleBridge'),
+        P(1965, 168, 100, 18, 'sprinkleBridge'), P(2068, 134, 96, 18, 'frostingWall'), P(2120, 390, 190, 22, 'fondantSlab'), P(2268, 338, 112, 18, 'cakeElevator', { minY: 286, maxY: 338, speed: 0.56, dir: 1 }), P(2345, 376, 82, 18, 'sprinkleBounce'), P(2490, 330, 140, 20, 'cakeLayer'),
+        P(2574, 236, 96, 18, 'frostingWall'), P(2700, 274, 82, 88, 'candyBlinkGate', { phase: 0, openFor: 64, closedFor: 78, open: false }), P(2768, 300, 92, 18, 'frostingWall'), P(2928, 214, 76, 92, 'candyBlinkGate', { phase: 38, openFor: 64, closedFor: 86, open: false }), P(2868, 286, 120, 22, 'candyGatePlatform', { minX: 2868, maxX: 3005, speed: 1.05, dir: 1 }), P(3060, 232, 140, 20, 'sprinkleBridge'),
+        P(3185, 420, 190, 80, 'cakeLayer'), P(1030, 306, 82, 18, 'cupcakeBlock'), P(2240, 320, 82, 18, 'cupcakeBlock')
       ],
       candies: [
         C('star_purple', 148, 406), C('bean_green', 392, 382), C('bean_blue', 470, 382), C('star_blue', 600, 330), C('bean_purple', 812, 282),
@@ -179,13 +179,13 @@
       goal: { x: 3455, y: 160 },
       decor: [D(1328, 246, 'candy_arch', { h: 70, alpha: 0.36 }), D(2482, 226, 'candy_arch', { h: 70, alpha: 0.34 }), D(3342, 118, 'lollipop_swirl', { h: 76, alpha: 0.72 })],
       platforms: [
-        P(0, 452, 290, 80, 'choco'), P(340, 416, 165, 22, 'cookie'), P(555, 370, 135, 20, 'choco'), TG(760, 288, 76, 92, 24, 72, 92), P(848, 330, 132, 18, 'choco'),
-        B(950, 392, 82), P(1100, 350, 150, 20, 'cookie'), TG(1320, 274, 92, 110, 0), P(1470, 236, 140, 20, 'cookie'),
-        P(1622, 188, 106, 18, 'cookie'), M(1680, 286, 132, 22, 1680, 1860, 1.2), TG(1836, 214, 74, 90, 28, 66, 86), P(1910, 414, 180, 22, 'cookie'),
-        P(2140, 370, 145, 20, 'choco'), B(2320, 360, 82), P(2372, 210, 100, 18, 'cookie'), TG(2470, 250, 92, 110, 60), P(2630, 212, 140, 20, 'cookie'),
-        P(2780, 170, 104, 18, 'choco'), M(2840, 248, 132, 22, 2840, 3025, 1.24), P(3075, 318, 150, 20, 'choco'),
-        TG(3250, 200, 90, 110, 120), P(3332, 138, 102, 18, 'cookie'), P(3370, 176, 190, 20, 'icing'), P(3420, 420, 180, 84, 'icing'),
-        P(1180, 306, 82, 18, 'break'), P(2030, 330, 82, 18, 'break'), P(2950, 282, 82, 18, 'break')
+        P(0, 452, 290, 80, 'dreamDoorBase'), P(340, 416, 165, 22, 'dreamDoorPiece'), P(555, 370, 135, 20, 'dreamDoorBase'), P(760, 288, 76, 92, 'finalBlinkGate', { phase: 24, openFor: 72, closedFor: 92, open: false }), P(848, 330, 132, 18, 'dreamDoorBase'),
+        P(950, 392, 82, 18, 'starBounce'), P(1100, 350, 150, 20, 'dreamDoorPiece'), P(1320, 274, 92, 110, 'finalBlinkGate', { phase: 0, openFor: 80, closedFor: 90, open: false }), P(1470, 236, 140, 20, 'dreamDoorPiece'),
+        P(1622, 188, 106, 18, 'starPlatform'), P(1680, 286, 132, 22, 'finalGatePlatform', { minX: 1680, maxX: 1860, speed: 1.2, dir: 1 }), P(1836, 214, 74, 90, 'finalBlinkGate', { phase: 28, openFor: 66, closedFor: 86, open: false }), P(1910, 414, 180, 22, 'dreamDoorPiece'),
+        P(2140, 370, 145, 20, 'dreamDoorBase'), P(2320, 360, 82, 18, 'starBounce'), P(2372, 210, 100, 18, 'starPlatform'), P(2470, 250, 92, 110, 'finalBlinkGate', { phase: 60, openFor: 80, closedFor: 90, open: false }), P(2630, 212, 140, 20, 'dreamDoorPiece'),
+        P(2780, 170, 104, 18, 'dreamDoorBase'), P(2840, 248, 132, 22, 'finalGatePlatform', { minX: 2840, maxX: 3025, speed: 1.24, dir: 1 }), P(3075, 318, 150, 20, 'dreamDoorBase'),
+        P(3250, 200, 90, 110, 'finalBlinkGate', { phase: 120, openFor: 80, closedFor: 90, open: false }), P(3332, 138, 102, 18, 'starPlatform'), P(3370, 176, 190, 20, 'sugarCrystalLedge'), P(3420, 420, 180, 84, 'sugarCrystalLedge'),
+        P(1180, 306, 82, 18, 'gateShard'), P(2030, 330, 82, 18, 'gateShard'), P(2950, 282, 82, 18, 'gateShard')
       ],
       candies: [
         C('star_blue', 150, 406), C('bean_red', 390, 382), C('bean_orange', 470, 382), C('star_purple', 600, 328), C('bean_green', 800, 282),

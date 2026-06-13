@@ -1,164 +1,171 @@
 # Level Theme Matrix
 
-Use this matrix when tuning level data, adding platform skins, or planning new art for the current World 1 campaign. Preserve existing mechanics unless a task explicitly changes gameplay. Prefer reskinning current platform and obstacle kinds before adding new physics.
+Use this matrix when tuning World 1 level data, adding platform skins, planning new art, or reviewing theme fit. Preserve existing mechanics unless a task explicitly changes gameplay. Prefer reskinning current platform and obstacle kinds before adding new physics.
 
 ## Global Rules
 
-- Keep every hazard readable before the player commits.
-- Keep side stages optional and themed as short remixes of their parent level.
-- Candy trails should show the intended route, especially before jumps, lifts, bounce pads, gates, rafts, slides, and high paths.
-- Mobile gameplay must keep platforms, gates, hazards, enemies, and candy trails readable at phone landscape sizes.
-- Do not rely on color alone for danger, locked state, or safe routes.
-- Avoid adding mechanics that require precision outside the current gentle campaign feel.
+- Keep the current static HTML/CSS/JavaScript canvas setup.
+- Keep World 1 gentle, readable, bright, and family-friendly.
+- Keep the main path casual-friendly: Meadow -> Grove -> Pretzel -> Jungle -> Falls -> Woods -> Cake -> Gate/Keep.
+- Keep side stages optional unless a future task explicitly changes progression.
+- Candy trails should show the intended route, especially before jumps, lifts, bounce pads, gates, rafts, slides, syrup, and high paths.
+- Platforms, hazards, enemies, and collectibles must remain readable at phone landscape sizes.
+- Do not rely on color alone to show danger, safe footing, locked state, or route direction.
+- Prefer visual aliases that map to existing mechanics before adding new collision or physics.
 
 ## Lollipop Meadow
 
-**Visual identity:** Bright first-arrival candy field with soft frosting ground, lollipop stems, pastel candy pads, and safe open space.
+**Visual identity:** Bright first-arrival candy meadow with open space, pastel lollipops, soft frosting ground, candy sticks, gumdrops, and a safe storybook welcome.
 
-**Approved platform styles:** Soft meadow frosting pads, lollipop leaf lifts, small cookie stepping stones, candy-garden blocks, gentle floating candy lifts, bounce pads styled as springy candy blooms.
+**Approved platform styles:** Lollipop-stick bridges, pastel candy planks, swirl discs, gumdrop mounds, soft frosting pads, gentle floating candy lifts, and springy candy-bloom bounce pads.
 
-**Approved obstacle styles:** Light cookie crumble blocks, low-stakes gaps, slow floating lifts, mild bounce-pad jumps.
+**Approved obstacles:** Small crumble blocks styled as candy tiles or lollipop chips, low-stakes gaps, slow floating lifts, clear bounce-pad jumps, and short high-route tests.
 
-**Primary mechanic:** Slow floating lifts that teach vertical timing.
+**Approved enemies:** Gummy and marshmallow enemies. Beetles only in optional or later meadow-adjacent content. Avoid jawbreakers in the first main level.
 
-**Secondary mechanic:** Bounce pads and a small number of breakable cookie blocks.
+**Candy trail style:** Friendly curved trails that point to the next safe landing. Use bright star candies before lifts, bounce pads, and the high final trail.
 
-**Enemy fit:** Gummy and marshmallow enemies fit best. Beetles can appear sparingly in secrets. Jawbreakers should generally be avoided in the first main level.
+**Primary movement mechanic:** Slow floating lifts that teach vertical timing.
 
-**Candy trail style:** Friendly curved trails that lead the player into the next safe landing. Use brighter stars before lifts, bounce pads, and the high final trail.
+**Things to avoid:** Heavy chocolate blocks, castle gates, dense enemy clusters, dark palettes, blind drops, harsh timing, or precision-first jumps.
 
-**Things to avoid:** Heavy chocolate/castle blocks, dense enemy clusters, harsh timed gates, dark visual palettes, blind drops.
+**Mobile readability notes:** Keep the route broad and obvious. Floating lifts need strong silhouettes, and candy trails must not blend into pastel background art.
 
-**Notes for mobile readability:** Keep the first route broad and obvious. Floating lifts need clear silhouettes and candy trails should not blend into pastel backgrounds.
+## Grove
 
-## Pretzel Path / Licorice Lane
+**Visual identity:** A soft secret-garden extension of Meadow with gummy bushes, candy leaves, lollipop trunks, hidden balcony paths, and brighter magical accents.
 
-**Visual identity:** Twisting road of pretzel planks, licorice rails, warm bakery browns, forked paths, and leaning candy signs.
+**Approved platform styles:** Gummy lift pads, candy-leaf platforms, lollipop branch bridges, gumdrop steps, soft frosting shelves, and small floating candy pads.
 
-**Approved platform styles:** Pretzel planks for tilting platforms, licorice rails for moving platforms, wafer shelves, darker bakery ground, crumbly pretzel-cookie bridge pieces.
+**Approved obstacles:** Gentle vertical lift chains, soft bounce pads, short optional high paths, light crumble blocks, and visible gaps with clear landing trails.
 
-**Approved obstacle styles:** Tilting planks, moving shelves, breakable bridge segments, moderate bounce-pad recovery jumps.
+**Approved enemies:** Gummy enemies are the best fit. Marshmallows work as soft blockers. Beetles can guard optional shelves. Avoid jawbreakers unless the grove becomes a later challenge variant.
 
-**Primary mechanic:** Tilting platforms that make the road feel unstable but readable.
+**Candy trail style:** More explicit than Meadow because Grove often reads as a side or branch space. Use breadcrumb arcs through lifts and a distinct trail toward optional specials.
 
-**Secondary mechanic:** Horizontal moving platforms and short breakable bridge runs.
+**Primary movement mechanic:** Floating lift chains with optional bounce-pad connectors.
 
-**Enemy fit:** Beetles, gummies, and marshmallows all fit. Jawbreakers can appear as a late-level pressure enemy, not as a surprise.
+**Things to avoid:** Pretzel road visuals, cold ice/frosting identity, syrup maze identity, dark gate pieces, or anything that makes the grove feel like a later danger zone.
 
-**Candy trail style:** Use staggered trails to show fork direction and centered landing points on tilts. Put extra trail markers before breakable bridge sprints.
+**Mobile readability notes:** Secret paths need large landmarks. Avoid relying on tiny leaf details or dense candy clusters to explain the route.
 
-**Things to avoid:** Icy slide visuals, syrup slowdown as a main feature, too many generic cookie blocks, gate-heavy sections.
+## Pretzel Path
 
-**Notes for mobile readability:** Tilting platforms need visible outlines and enough horizontal spacing to read their angle. Avoid tiny high-route labels or trail clusters.
+**Visual identity:** Twisting pretzel and licorice road with warm bakery browns, looped rails, leaning candy signs, and forked paths that feel playful rather than dangerous.
 
-## Ice Cream Falls / Frosting Falls
+**Approved platform styles:** Pretzel bridges, twisted pretzel planks, licorice rails, wafer road pieces, bendy candy-road ledges, and darker bakery ground.
 
-**Visual identity:** Cool frosting cliffs, ice cream ledges, mist, soft blue highlights, marshmallow rafts, and waffle-cone supports.
+**Approved obstacles:** Tilting planks, horizontal moving rails, short breakable bridge runs, mild bounce recovery, and clearly marked fork routes.
 
-**Approved platform styles:** Frosting ledges, ice cream slicks, waffle-cone supports, marshmallow rafts, chilled candy shelves, pale blue slide platforms.
+**Approved enemies:** Beetles, gummies, and marshmallows. Jawbreakers can appear as late-route pressure if visible before contact.
 
-**Approved obstacle styles:** Slick slides, rafts, moving ledges over safe-looking gaps, breakable cone or cookie shelves.
+**Candy trail style:** Staggered trails that center the player on tilts and clarify fork direction. Add stronger trails before breakable bridge sprints.
 
-**Primary mechanic:** Raft timing across gaps.
+**Primary movement mechanic:** Tilting platforms that make the road feel unstable but readable.
 
-**Secondary mechanic:** Slick slide ledges and cold vertical climbs.
+**Things to avoid:** Ice slides, syrup as a main feature, frosting cliffs, castle gate density, and too many generic cookie blocks without pretzel/licorice styling.
 
-**Enemy fit:** Marshmallows and gummies fit strongly. Beetles can patrol cone ledges. Jawbreakers should be used sparingly on stable ledges.
+**Mobile readability notes:** Tilting platforms need strong outlines and enough length to read their angle. Keep fork trails separated so they do not look like clutter on phone landscape.
 
-**Candy trail style:** Trails should arc onto rafts and then point to the next ledge. Use clear vertical trails for cold climbs and high overlooks.
+## Jungle
 
-**Things to avoid:** Warm waffle-woods syrup identity, too many chocolate blocks, dense gate timing, unclear slick surfaces.
+**Visual identity:** Jelly jungle shortcut with candy vines, gummy leaves, licorice roots, wafer canopy shelves, and hidden forked routes above the pretzel roads.
 
-**Notes for mobile readability:** Rafts and slides must contrast with the background. Candy trails should show where to stand before the raft arrives.
+**Approved platform styles:** Jelly planks, licorice vine rails, wafer canopy platforms, candy-leaf steps, bendy jungle shelves, and gummy bounce pads.
+
+**Approved obstacles:** Tilting canopy planks, horizontal moving shelves, short vine-like bridge gaps, bounce connectors, and optional high-route shelves.
+
+**Approved enemies:** Gummies and beetles fit best. Jawbreakers can guard narrow late shelves if readable. Marshmallows are fine in calmer pockets.
+
+**Candy trail style:** Breadcrumb trails through canopy forks. Use vertical candy pairs before moving shelves and clear arcs where jungle paths bend upward.
+
+**Primary movement mechanic:** Tilting and moving platforms chained into a forked shortcut.
+
+**Things to avoid:** Heavy castle gates, cold ice/frosting surfaces, syrup as the dominant obstacle, and visually busy foliage that hides enemies or landing edges.
+
+**Mobile readability notes:** Canopy platforms must not disappear into background greens. Use high-contrast outlines and avoid stacking route trails too close together.
+
+## Ice Cream Falls
+
+**Visual identity:** Cool frosting cliffs, ice cream ledges, mist, pale blue highlights, marshmallow rafts, waffle-cone supports, and a higher colder feeling than the early world.
+
+**Approved platform styles:** Frozen frosting ledges, ice cream scoops, slick cream shelves, waffle-cone rafts, marshmallow rafts, chilled candy platforms, and pale slide surfaces.
+
+**Approved obstacles:** Raft timing, slick slides, moving ledges over visible gaps, cold vertical climbs, and breakable cone or frosting shelves.
+
+**Approved enemies:** Marshmallows and gummies fit strongly. Beetles can patrol cone ledges. Jawbreakers should be used sparingly on stable ledges.
+
+**Candy trail style:** Trails should arc onto rafts and then point toward the next ledge. Use clear vertical trails for climbs and high overlooks.
+
+**Primary movement mechanic:** Raft timing across gaps.
+
+**Things to avoid:** Warm syrup maze identity, pretzel road visuals, too many chocolate blocks, dense gate rhythm, or unclear slick surfaces.
+
+**Mobile readability notes:** Rafts, slides, and next landings must contrast with the background. Candy trails should show where to wait before the raft arrives.
 
 ## Waffle Woods
 
-**Visual identity:** Waffle trunks, syrup pockets, hidden clearings, warm forest candy tones, and layered wafer paths.
+**Visual identity:** Waffle trunks, wafer branches, syrup pockets, hidden clearings, warm forest candy tones, and layered maze-like paths.
 
-**Approved platform styles:** Waffle platforms, wafer branches, syrup-coated ledges, cookie stepping stones, hidden clearing pads, moving waffle shelves.
+**Approved platform styles:** Waffle tiles, wafer bridges, wafer branches, syrup-coated ledges, forest-cookie steps, hidden clearing pads, and moving waffle shelves.
 
-**Approved obstacle styles:** Syrup slowdown zones, maze-like split paths, moving platforms, bounce pads used as route connectors, breakable wafer/cookie shortcuts.
+**Approved obstacles:** Syrup slowdown zones, maze-like split paths, moving platforms, bounce pads as route connectors, and breakable wafer/cookie shortcuts.
 
-**Primary mechanic:** Syrup slowdown as the signature woods hazard.
+**Approved enemies:** Beetles and jawbreakers fit the guarded maze feel. Gummies and marshmallows can soften early or calmer sections.
 
-**Secondary mechanic:** Moving platforms and bounce routes through hidden clearings.
+**Candy trail style:** Breadcrumb trails through the maze. Main-route trails should be readable and steady; optional high-route trails should be visually distinct.
 
-**Enemy fit:** Beetles and jawbreakers fit the maze/guarded-path feel. Gummies and marshmallows can soften early sections.
+**Primary movement mechanic:** Syrup slowdown as the signature woods hazard.
 
-**Candy trail style:** Use trails as breadcrumbs through the maze. Keep optional high-route trails visually distinct from the main route.
+**Things to avoid:** Ice slide identity, gate-heavy rhythm, overly dark forest palettes, cluttered syrup sections, and hidden enemy placements.
 
-**Things to avoid:** Ice/frosting slide mechanics as a major feature, heavy gate rhythm, overly dark forest palettes, cluttered syrup sections.
+**Mobile readability notes:** Syrup must read differently from safe platforms by shape and contrast, not just color. Avoid placing critical low-route hazards under touch controls.
 
-**Notes for mobile readability:** Syrup must be visibly different from safe platforms. Avoid placing touch controls over low-route hazards or critical landing reads.
+## Cake
 
-## Castle Courtyard Run
+**Visual identity:** Bakery-castle approach with cake towers, frosting ledges, fondant slabs, sprinkle bridges, cupcake blocks, sugar gates, and guarded courtyard structure.
 
-**Visual identity:** Cake towers, frosting ledges, guarded candy lanes, fondant slabs, sugar gates, and polished courtyard structure.
+**Approved platform styles:** Cake-layer platforms, frosting blocks, fondant slabs, sprinkle bridges, cupcake stones, cake elevators, and candy-castle ledges.
 
-**Approved platform styles:** Cake-layer platforms, frosting blocks, fondant slabs, candy-stone ledges, cake elevators, guarded cookie blocks.
+**Approved obstacles:** Sugar gates, blink gates, vertical elevators, moving gate platforms, breakable cupcake or cake blocks, and bounce pads as recovery tools.
 
-**Approved obstacle styles:** Sugar gates, blink gates, vertical elevators, moving gate platforms, breakable guarded blocks, bounce pads as recovery tools.
+**Approved enemies:** Beetles and jawbreakers fit guarded lanes. Gummies and marshmallows can appear in lower-pressure spaces or near safe waiting platforms.
 
-**Primary mechanic:** Elevators that prepare the player for guarded vertical movement.
+**Candy trail style:** Trails should show elevator exits, gate timing routes, and safe waiting spots. Use candy clusters to clarify when a player should pause before a gate.
 
-**Secondary mechanic:** Sugar gates and blink-gate timing.
+**Primary movement mechanic:** Elevators that prepare the player for guarded vertical movement.
 
-**Enemy fit:** Beetles and jawbreakers fit guarded lanes. Gummies and marshmallows can appear in lower-pressure spaces.
+**Things to avoid:** Wild meadow props, syrup maze identity, cold raft identity, hidden precision jumps, and visually tiny gate openings.
 
-**Candy trail style:** Use trails to show gate timing routes and elevator exits. Place trail markers before safe waiting spots.
+**Mobile readability notes:** Gate open/closed states need strong silhouettes. Waiting platforms before gates should be large enough to read on phone landscape.
 
-**Things to avoid:** Wild meadow props, syrup maze identity, hidden precision jumps, visually tiny gate openings.
+## Gate/Keep
 
-**Notes for mobile readability:** Gate open/closed states need strong silhouettes. Waiting platforms before gates should be large enough to read on phone landscape.
+**Visual identity:** Final candy keep with glowing gate pieces, sugar crystal ledges, star platforms, dream-door fragments, candy arches, high ledges, and a clear homeward climb.
 
-## Closet Door Keep
+**Approved platform styles:** Dark candy-castle blocks, glowing door-frame platforms, sugar crystal ledges, star lifts, final frosting ledges, gate machinery, and candy arch supports.
 
-**Visual identity:** Final candy keep with glowing gate pieces, dark candy-stone, closet-door light, high ledges, and clear final ascent.
+**Approved obstacles:** Blink gates, final moving platforms, breakable gate pieces, bounce pads for recovery, readable chase pressure, and a final ascent that points toward home.
 
-**Approved platform styles:** Dark candy-stone blocks, cookie ledges, glowing door-frame platforms, final frosting ledges, moving gate machinery.
+**Approved enemies:** Jawbreakers and beetles fit the final guarded feel. Marshmallows and gummies can provide contrast in calmer pockets.
 
-**Approved obstacle styles:** Blink gates, final moving platforms, breakable blocks, bounce pads for recovery, chase pressure that remains readable.
+**Candy trail style:** Trails should mark safe timing lanes, final climb direction, and the homeward route. Use star candies near final ascent landmarks.
 
-**Primary mechanic:** Blink-gate rhythm under final-level pressure.
+**Primary movement mechanic:** Blink-gate rhythm under final-level pressure.
 
-**Secondary mechanic:** Moving ledges and the jawbreaker chase.
+**Things to avoid:** Pastel first-level softness as the dominant look, syrup sections, raft identity, hidden chase triggers, dark-on-dark platforms, and unsafe-looking home-route jumps.
 
-**Enemy fit:** Jawbreakers and beetles fit the final guarded feel. Marshmallows and gummies can provide contrast in calmer pockets.
-
-**Candy trail style:** Trails should mark safe timing lanes, final climb direction, and the homeward route. Avoid decorative trails that imply unsafe jumps.
-
-**Things to avoid:** Pastel first-level softness as the main look, syrup sections, raft identity, unclear chase boundaries.
-
-**Notes for mobile readability:** The chase enemy, gates, and final climb must remain visually separated. Avoid dark-on-dark platforms or tiny gate gaps.
-
-## Side Stages
-
-**Visual identity:** Optional secret remixes of parent themes. Each side stage should feel related to its parent level but slightly more magical, hidden, or skill-focused.
-
-**Approved platform styles:** Parent-theme variants with brighter secret-route accents: gummy lifts, jungle jelly planks, marshmallow rafts, lantern syrup loops, skyway elevators, Morning Star mixed candy paths.
-
-**Approved obstacle styles:** Shorter versions of parent mechanics, optional challenge routes, parent-themed breakables, readable gate or movement tests.
-
-**Primary mechanic:** A focused remix of the parent level's signature mechanic.
-
-**Secondary mechanic:** One supporting mechanic from the parent level or a gentle crossover mechanic.
-
-**Enemy fit:** Use fewer enemies than main levels. Match enemy choice to the side-stage theme and keep stomp/readability clear.
-
-**Candy trail style:** Trails should be more explicit than main levels because side stages often have shorter routes and optional mastery goals.
-
-**Things to avoid:** Introducing brand-new physics, requiring side-stage mastery for main progress, mixing too many themes in one short stage.
-
-**Notes for mobile readability:** Keep secret-route landmarks large. Do not rely on small labels or dense candy clusters to explain optional paths.
+**Mobile readability notes:** The chase enemy, gates, and final climb must remain visually separated. Gate gaps and star platforms need clear silhouettes at phone landscape size.
 
 ## Quick Reference
 
-| Theme | Primary Mechanic | Secondary Mechanic | Best Enemy Fit | Avoid |
+| World 1 node | Visual language | Primary mechanic | Best enemy fit | Avoid |
 |---|---|---|---|---|
-| Lollipop Meadow | Floating lifts | Bounce pads | Gummy, marshmallow | Timed gates, dark hazards |
-| Pretzel Path / Licorice Lane | Tilting planks | Moving shelves | Beetle, gummy, marshmallow | Ice slides, syrup identity |
-| Ice Cream Falls / Frosting Falls | Rafts | Slick slides | Marshmallow, gummy | Chocolate-heavy visuals |
-| Waffle Woods | Syrup slowdown | Moving/bounce routes | Beetle, jawbreaker | Gate-heavy rhythm |
-| Castle Courtyard Run | Elevators | Sugar/blink gates | Beetle, jawbreaker | Wild meadow props |
-| Closet Door Keep | Blink gates | Chase/moving ledges | Jawbreaker, beetle | Syrup/raft identity |
-| Side stages | Parent remix | One support mechanic | Theme-matched light mix | New required mechanics |
+| Lollipop Meadow | Lollipops, candy sticks, gumdrops | Floating lifts | Gummy, marshmallow | Timed gates, dark hazards |
+| Grove | Gummy garden, candy leaves, secret lifts | Lift chains | Gummy, marshmallow | Cold, castle, or syrup identity |
+| Pretzel Path | Pretzel bridges, licorice rails | Tilting planks | Beetle, gummy, marshmallow | Ice slides, syrup maze |
+| Jungle | Jelly canopy, vine rails, wafer shelves | Tilt and moving chains | Gummy, beetle | Hidden clutter, heavy gates |
+| Ice Cream Falls | Frosting cliffs, rafts, slick cream | Raft timing | Marshmallow, gummy | Warm syrup/chocolate-heavy visuals |
+| Waffle Woods | Waffle trunks, wafer paths, syrup | Syrup slowdown | Beetle, jawbreaker | Gate-heavy rhythm |
+| Cake | Cake layers, frosting blocks, sugar gates | Elevators | Beetle, jawbreaker | Wild meadow props |
+| Gate/Keep | Candy keep, stars, dream-door gates | Blink gates | Jawbreaker, beetle | Syrup/raft identity |

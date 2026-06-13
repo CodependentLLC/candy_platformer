@@ -78,15 +78,28 @@
   const specialSaveKey = 'candy-platformer-special-progress';
   const rewardSaveKey = 'candy-platformer-reward-progress';
   const medalSaveKey = 'candy-platformer-medal-progress';
+  const mapStepSaveKey = 'candy-platformer-world-1-map-step';
   const versionedSaveKey = 'candy-platformer-save-v1';
   const currentSaveVersion = 1;
   const currentWorldId = 'world-1';
   // These legacy keys remain the source of truth until progression moves to stable world/stage IDs.
-  const legacyProgressSaveKeys = [saveKey, specialSaveKey, rewardSaveKey, medalSaveKey];
+  const legacyProgressSaveKeys = [saveKey, specialSaveKey, rewardSaveKey, medalSaveKey, mapStepSaveKey];
   let unlockedLevel = 0;
+  let unlockedMapStep = 0;
   let hasActiveRun = false;
   let menuReturnState = 'map';
   let menuStep = 'hero';
+  let canvasProfileReady = false;
+  let compactCanvasCached = false;
+  let coarsePointerCached = false;
+  let tabletCanvasCached = false;
+  let reducedEffectsActive = false;
+  let perfOverlayVisible = false;
+  let perfLastFrameTime = 0;
+  let perfLastSampleTime = 0;
+  let perfFrameCount = 0;
+  let perfFps = 0;
+  const hudCache = {};
 
   const assets = {};
   const worldMapBackground = new Image();
@@ -164,6 +177,7 @@
   }
 
   function updateUiMode() {
+    refreshCanvasProfile();
     const wrap = canvas.parentElement.parentElement;
     const mapMode = gameState === 'map';
     const compact = isMobileCanvas();
@@ -199,6 +213,26 @@
     return 0;
   }
 
+  function maxWorldMapStep() {
+    return Math.max(0, WORLD_MAP_NODES.length - 1);
+  }
+
+  function legacyUnlockedLevelToMapStep(legacyLevel) {
+    const clamped = Math.max(0, Math.min(MAIN_LEVEL_COUNT - 1, legacyLevel));
+    const legacyMapSteps = [0, 2, 4, 5, 6, 7];
+    return Math.min(maxWorldMapStep(), legacyMapSteps[clamped] ?? clamped);
+  }
+
+  function readUnlockedMapStep(legacyLevel = readUnlockedLevel()) {
+    const migratedStep = legacyUnlockedLevelToMapStep(legacyLevel);
+    try {
+      const raw = localStorage.getItem(mapStepSaveKey);
+      const parsed = Number(raw);
+      if (Number.isInteger(parsed)) return Math.max(migratedStep, Math.max(0, Math.min(maxWorldMapStep(), parsed)));
+    } catch {}
+    return migratedStep;
+  }
+
   function readSelectedHero() {
     try {
       const hero = localStorage.getItem(heroSaveKey);
@@ -216,6 +250,12 @@
   function persistUnlockedLevel() {
     try {
       localStorage.setItem(saveKey, String(unlockedLevel));
+    } catch {}
+  }
+
+  function persistUnlockedMapStep() {
+    try {
+      localStorage.setItem(mapStepSaveKey, String(unlockedMapStep));
     } catch {}
   }
 
@@ -290,8 +330,10 @@
   }
 
   function readLegacySave() {
+    const legacyUnlockedLevel = readUnlockedLevel();
     return {
-      unlockedLevel: readUnlockedLevel(),
+      unlockedLevel: legacyUnlockedLevel,
+      unlockedMapStep: readUnlockedMapStep(legacyUnlockedLevel),
       selectedHero: readSelectedHero(),
       specialProgress: readSpecialProgress(),
       rewardProgress: readRewardProgress(),
@@ -316,6 +358,7 @@
       unlockedWorldIds: [currentWorldId],
       selectedHero: legacySave.selectedHero,
       unlockedLevelIndex: legacySave.unlockedLevel,
+      unlockedMapStep: legacySave.unlockedMapStep,
       unlockedStageIds,
       completedStageIds,
       specialsByStageId: keyedStageProgress(legacySave.specialProgress, row => Array.isArray(row) ? row.map(Boolean) : []),
@@ -342,6 +385,7 @@
 
   function resetProgressAndReturnToMenu() {
     unlockedLevel = 0;
+    unlockedMapStep = 0;
     specialProgress = LEVELS.map(level => Array((level.specials || []).length).fill(false));
     rewardProgress = LEVELS.map(() => false);
     medalProgress = Array.from({ length: ALL_STAGE_COUNT }, () => ({ swift: false, steady: false, specialist: false }));
@@ -413,12 +457,12 @@
   function firstVisibleBranchTarget() {
     const branchNodes = currentWorldMapData().branchNodes || WORLD_MAP_BRANCH_NODES;
 
-    for (let i = 0; i <= unlockedLevel && i < branchNodes.length; i++) {
-      if (rewardRouteUnlocked(i)) return branchNodeId(i);
+    for (const branch of branchNodes) {
+      if (branch.levelIndex <= unlockedLevel && rewardRouteUnlocked(branch.levelIndex)) return branchNodeId(branch.levelIndex);
     }
 
-    for (let i = 0; i <= unlockedLevel && i < branchNodes.length; i++) {
-      return branchNodeId(i);
+    for (const branch of branchNodes) {
+      if (branch.levelIndex <= unlockedLevel) return branchNodeId(branch.levelIndex);
     }
 
     return 0;
@@ -464,6 +508,13 @@
     if (clamped <= unlockedLevel) return;
     unlockedLevel = clamped;
     persistUnlockedLevel();
+  }
+
+  function setUnlockedMapStep(nextStep) {
+    const clamped = Math.max(0, Math.min(maxWorldMapStep(), nextStep));
+    if (clamped <= unlockedMapStep) return;
+    unlockedMapStep = clamped;
+    persistUnlockedMapStep();
   }
 
   function ensureAudio() {
@@ -607,7 +658,7 @@
     assets[name] = createImage(`assets/${folder}/${name}.png`);
   }
 
-  const { P, B, M, R, V, G, TG, E, C, S, D, F, HN, WZ } = window.CandyQuestShapes;
+  const { P, B, M, R, V, G, TG, E, C, S, D, F, HN, WZ, PLATFORM_KIND_ALIASES = {} } = window.CandyQuestShapes;
   const {
     LEVELS,
     BONUS_STAGES,
@@ -638,6 +689,7 @@
   const jumpPower = -16.1;
   const coyoteFrames = 12;
   const bufferFrames = 12;
+  const spawnGraceFrames = 45;
 
   let level = null;
   let levelDecor = [];
@@ -664,6 +716,7 @@
   let wonderTextTimer = 0;
   let runTookDamage = false;
   let lastStageRewards = [];
+  let respawnGraceTimer = 0;
 
   function levelSpecialCount(i) {
     return (LEVELS[i] && LEVELS[i].specials ? LEVELS[i].specials.length : 0);
@@ -774,6 +827,39 @@
     return Math.max(0, Math.min(MAIN_LEVEL_COUNT - 1, stageIndex));
   }
 
+  function mapNodeUnlockStep(node, nodeIndex) {
+    if (Number.isInteger(node?.unlockStep)) return Math.max(0, Math.min(maxWorldMapStep(), node.unlockStep));
+    return Math.max(0, Math.min(maxWorldMapStep(), nodeIndex));
+  }
+
+  function mapStepForStageIndex(stageIndex) {
+    return WORLD_MAP_NODES.findIndex((node, index) => mapNodeStageIndex(node, index) === stageIndex);
+  }
+
+  function legacyUnlockLevelForMapStep(step) {
+    let legacyLevel = 0;
+    WORLD_MAP_NODES.forEach((node, index) => {
+      if (mapNodeUnlockStep(node, index) > step) return;
+      const stageIndex = mapNodeStageIndex(node, index);
+      if (stageIndex < MAIN_LEVEL_COUNT) legacyLevel = Math.max(legacyLevel, stageIndex);
+    });
+    return Math.max(0, Math.min(MAIN_LEVEL_COUNT - 1, legacyLevel));
+  }
+
+  function unlockMainPathAfterStage(stageIndex) {
+    const completedStep = mapStepForStageIndex(stageIndex);
+    if (completedStep < 0) return stageIndex;
+    const nextStep = Math.min(maxWorldMapStep(), completedStep + 1);
+    setUnlockedMapStep(nextStep);
+    setUnlockedLevel(legacyUnlockLevelForMapStep(nextStep));
+    return stageIndexForMapNode(nextStep);
+  }
+
+  function isMainPathBranchStageIndex(stageIndex) {
+    const step = mapStepForStageIndex(stageIndex);
+    return step >= 0 && isBranchStageIndex(stageIndex);
+  }
+
   function mapNodeIdForStageIndex(stageIndex) {
     if (isHiddenBonusStageIndex(stageIndex)) return MAP_NODE_BONUS;
     const nodeIndex = WORLD_MAP_NODES.findIndex((node, index) => mapNodeStageIndex(node, index) === stageIndex);
@@ -792,7 +878,7 @@
   function selectableMapNodes() {
     const nodes = [];
     WORLD_MAP_NODES.forEach((node, index) => {
-      if (unlockedLevel >= mapNodeUnlockLevel(node, index)) nodes.push(index);
+      if (unlockedMapStep >= mapNodeUnlockStep(node, index)) nodes.push(index);
     });
     for (const branch of WORLD_MAP_BRANCH_NODES) {
       if (branch.levelIndex <= unlockedLevel && rewardRouteUnlocked(branch.levelIndex)) nodes.push(branchNodeId(branch.levelIndex));
@@ -864,9 +950,23 @@
     };
   }
 
-  function resetAmbientParticles(theme) {
+  function ambientParticleTargetCount(theme) {
     const cfg = THEME_AMBIENCE[theme] || THEME_AMBIENCE.meadow;
-    ambientParticles = Array.from({ length: cfg.count }, () => buildAmbientParticle(theme));
+    if (!reducedEffectsMode()) return cfg.count;
+    return Math.max(8, Math.ceil(cfg.count * 0.45));
+  }
+
+  function resetAmbientParticles(theme) {
+    ambientParticles = Array.from({ length: ambientParticleTargetCount(theme) }, () => buildAmbientParticle(theme));
+  }
+
+  function maxParticleCount() {
+    return reducedEffectsMode() ? 90 : 180;
+  }
+
+  function clampParticles() {
+    const maxCount = maxParticleCount();
+    if (particles.length > maxCount) particles.splice(0, particles.length - maxCount);
   }
 
   function triggerWonder(zone) {
@@ -1107,6 +1207,11 @@
   }
 
   addEventListener('keydown', e => {
+    if (e.code === 'F3') {
+      e.preventDefault();
+      perfOverlayVisible = !perfOverlayVisible;
+      return;
+    }
     if (['ArrowLeft','ArrowRight','ArrowUp','Space','KeyA','KeyD','KeyW','KeyR','Enter'].includes(e.code)) e.preventDefault();
     keys.add(e.code);
     if (gameState === 'menu' && e.code === 'Enter') {
@@ -1172,7 +1277,7 @@
     WORLD_W = level.worldW;
     platforms = level.platforms.map(p => ({
       ...p,
-      crumbleTimer: p.kind === 'cookie' ? 0 : undefined,
+      crumbleTimer: platformBehaviorKind(p) === 'cookie' ? 0 : undefined,
       respawnTimer: 0
     }));
     candies = level.candies.map(([kind, x, y]) => ({ kind, x, y, taken: false, bob: Math.random() * Math.PI * 2 }));
@@ -1200,6 +1305,7 @@
       invuln: 0, landedTimer: 0, hurtTimer: 0, hearts: maxHearts,
       lastSafe: { x: level.start.x, y: level.start.y }
     });
+    respawnGraceTimer = 0;
     snapSpawnToGround();
     cameraX = 0;
     score = 0;
@@ -1244,15 +1350,32 @@
     return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
   }
 
+  function platformBehaviorKind(platformOrKind) {
+    const kind = typeof platformOrKind === 'string' ? platformOrKind : platformOrKind?.kind;
+    return PLATFORM_KIND_ALIASES[kind] || kind;
+  }
+
+  function platformHasBehavior(platformOrKind, ...kinds) {
+    return kinds.includes(platformBehaviorKind(platformOrKind));
+  }
+
+  function platformHasHorizontalMotion(p) {
+    return Number.isFinite(p.speed) && Number.isFinite(p.dir) && Number.isFinite(p.minX) && Number.isFinite(p.maxX);
+  }
+
+  function platformHasVerticalMotion(p) {
+    return Number.isFinite(p.speed) && Number.isFinite(p.dir) && Number.isFinite(p.minY) && Number.isFinite(p.maxY);
+  }
+
   function isSafePlatform(p) {
-    return ['icing', 'choco', 'wafer', 'float', 'elevator', 'slide', 'raft'].includes(p.kind);
+    return ['icing', 'choco', 'wafer', 'float', 'elevator', 'slide', 'raft'].includes(platformBehaviorKind(p));
   }
 
   function enemyHasGroundAhead(enemy) {
     const probeX = enemy.vx >= 0 ? enemy.x + enemy.w + 6 : enemy.x - 6;
     const probeY = enemy.y + enemy.h + 8;
     for (const p of platforms) {
-      if (!p.alive || p.kind === 'sugarGate' || p.kind === 'break') continue;
+      if (!p.alive || platformHasBehavior(p, 'sugarGate', 'break')) continue;
       const withinX = probeX >= p.x + 4 && probeX <= p.x + p.w - 4;
       const nearTop = probeY >= p.y && probeY <= p.y + p.h + 14;
       if (withinX && nearTop) return true;
@@ -1279,32 +1402,104 @@
     }
   }
 
-  function snapSpawnToGround() {
-    const feetX = player.x + player.w / 2;
-    let landingY = null;
+  function clampValue(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function isSpawnSupportPlatform(p) {
+    return p.alive && !platformHasBehavior(p, 'sugarGate', 'blinkGate', 'break');
+  }
+
+  function spawnPointOnPlatform(point, platform) {
+    const minX = platform.x + 8;
+    const maxX = platform.x + platform.w - player.w - 8;
+    const safeX = maxX >= minX ? clampValue(point.x, minX, maxX) : platform.x + platform.w / 2 - player.w / 2;
+    return {
+      x: clampValue(safeX, 0, WORLD_W - player.w),
+      y: platform.y - player.h,
+      platform
+    };
+  }
+
+  function findSafeSpawnPosition(point, horizontalPadding = 44) {
+    if (!point) return null;
+    const desiredCenterX = point.x + player.w / 2;
+    let best = null;
+    let bestScore = Infinity;
     for (const p of platforms) {
-      if (!p.alive || p.kind === 'sugarGate' || p.kind === 'break') continue;
-      const supported = feetX >= p.x + 4 && feetX <= p.x + p.w - 4;
-      if (!supported) continue;
+      if (!isSpawnSupportPlatform(p)) continue;
       const top = p.y - player.h;
-      const closeToStart = Math.abs(top - player.y) <= 18;
-      if (!closeToStart) continue;
-      if (landingY === null || top < landingY) landingY = top;
+      const nearX = desiredCenterX >= p.x - horizontalPadding && desiredCenterX <= p.x + p.w + horizontalPadding;
+      if (!nearX) continue;
+      const nearY = top >= point.y - 110 && top <= point.y + 220;
+      if (!nearY) continue;
+      const platformCenterX = clampValue(desiredCenterX, p.x + 8, p.x + p.w - 8);
+      const xDistance = Math.abs(desiredCenterX - platformCenterX);
+      const yDistance = Math.abs(top - point.y);
+      const movingPenalty = platformHasBehavior(p, 'float', 'elevator', 'moving', 'raft') ? 4 : 0;
+      const bouncePenalty = platformBehaviorKind(p) === 'bounce' ? 40 : 0;
+      const score = yDistance * 2 + xDistance + movingPenalty + bouncePenalty;
+      if (score < bestScore) {
+        bestScore = score;
+        best = spawnPointOnPlatform(point, p);
+      }
     }
-    if (landingY !== null) {
-      player.y = landingY;
-      player.onGround = true;
-      player.vy = 0;
-      player.coyote = coyoteFrames;
-      player.lastSafe = { x: player.x, y: player.y };
+    return best;
+  }
+
+  function findFirstSafePlatformSpawn(point) {
+    let best = null;
+    let bestDistance = Infinity;
+    for (const p of platforms) {
+      if (!isSpawnSupportPlatform(p) || platformBehaviorKind(p) === 'bounce') continue;
+      const distance = Math.abs((point?.x || 0) - p.x) + Math.abs((point?.y || 0) - (p.y - player.h));
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = spawnPointOnPlatform(point || { x: 70, y: 390 }, p);
+      }
     }
+    return best;
+  }
+
+  function resolveSafeSpawnPosition(point, fallback = level?.start) {
+    return findSafeSpawnPosition(point)
+      || findSafeSpawnPosition(point, 96)
+      || findSafeSpawnPosition(fallback)
+      || findSafeSpawnPosition(fallback, 96)
+      || findFirstSafePlatformSpawn(fallback)
+      || {
+        x: clampValue((fallback || point || { x: 70 }).x, 0, WORLD_W - player.w),
+        y: clampValue((fallback || point || { y: 390 }).y, 0, H - player.h - 8),
+        platform: null
+      };
+  }
+
+  function placePlayerAtSafeSpawn(point, options = {}) {
+    const safe = resolveSafeSpawnPosition(point, options.fallback || level?.start);
+    player.x = safe.x;
+    player.y = safe.y;
+    player.vx = 0;
+    player.vy = 0;
+    player.onGround = !!safe.platform;
+    player.surfaceKind = safe.platform ? platformBehaviorKind(safe.platform) : null;
+    player.coyote = safe.platform ? coyoteFrames : 0;
+    player.jumpBuffer = 0;
+    player.landedTimer = 0;
+    if (options.updateLastSafe !== false) player.lastSafe = { x: player.x, y: player.y };
+    if (options.graceFrames) respawnGraceTimer = Math.max(respawnGraceTimer, options.graceFrames);
+    if (options.invulnFrames) player.invuln = Math.max(player.invuln, options.invulnFrames);
+    return safe;
+  }
+
+  function snapSpawnToGround() {
+    placePlayerAtSafeSpawn(player, { graceFrames: spawnGraceFrames, invulnFrames: spawnGraceFrames });
   }
 
   function update() {
     time += 1;
     updateMusic();
-    updateParticles();
-    updateAmbientParticles();
+    if (gameState !== 'menu' && gameState !== 'map') updateParticles();
+    if (gameState === 'playing' || gameState === 'escape' || gameState === 'ending') updateAmbientParticles();
     if (gameState === 'map') {
       mapPulse += 0.05;
       if (mapBranchHintTimer > 0) mapBranchHintTimer--;
@@ -1359,18 +1554,12 @@
       if (winTimer === 120) {
         if (isHiddenBonusStageIndex(levelIndex)) {
           enterWorldMap(BONUS_STAGE_INDEX);
+        } else if (isMainPathBranchStageIndex(levelIndex)) {
+          enterWorldMap(unlockMainPathAfterStage(levelIndex));
         } else if (isBranchStageIndex(levelIndex)) {
-          const branchParentIndex = levelIndex - MAIN_LEVEL_COUNT;
-          const nextMainIndex = branchParentIndex + 1;
-          if (nextMainIndex < MAIN_LEVEL_COUNT) {
-            setUnlockedLevel(nextMainIndex);
-            enterWorldMap(nextMainIndex);
-          } else {
-            enterWorldMap(levelIndex);
-          }
+          enterWorldMap(levelIndex);
         } else if (levelIndex < MAIN_LEVEL_COUNT - 1) {
-          setUnlockedLevel(levelIndex + 1);
-          enterWorldMap(mainPathBranchStageAfterMainLevel(levelIndex) ?? levelIndex + 1);
+          enterWorldMap(unlockMainPathAfterStage(levelIndex));
         } else {
           escapeTimer = 0;
           gameState = 'escape';
@@ -1395,6 +1584,7 @@
     for (const p of platforms) {
       const previousX = p.x;
       const previousY = p.y;
+      const behavior = platformBehaviorKind(p);
       if (!p.alive && p.respawnTimer > 0) {
         p.respawnTimer--;
         if (p.respawnTimer <= 0) {
@@ -1402,29 +1592,29 @@
           p.crumbleTimer = 0;
         }
       }
-      if ((p.kind === 'moving' || p.kind === 'raft') && p.alive) {
+      if ((behavior === 'moving' || behavior === 'raft') && p.alive && platformHasHorizontalMotion(p)) {
         p.x += p.speed * p.dir;
         if (p.x < p.minX || p.x > p.maxX) {
           p.dir *= -1;
           p.x = Math.max(p.minX, Math.min(p.maxX, p.x));
         }
       }
-      if ((p.kind === 'float' || p.kind === 'elevator') && p.alive) {
+      if ((behavior === 'float' || behavior === 'elevator') && p.alive && platformHasVerticalMotion(p)) {
         p.y += p.speed * p.dir;
         if (p.y < p.minY || p.y > p.maxY) {
           p.dir *= -1;
           p.y = Math.max(p.minY, Math.min(p.maxY, p.y));
         }
       }
-      if (p.alive && (p.kind === 'moving' || p.kind === 'raft' || p.kind === 'float' || p.kind === 'elevator')) {
+      if (p.alive && ['moving', 'raft', 'float', 'elevator'].includes(behavior)) {
         carrySupportedEnemies(p, p.x - previousX, p.y - previousY, previousX, previousY);
       }
-      if (p.kind === 'blinkGate') {
+      if (behavior === 'blinkGate') {
         const cycle = (p.openFor || 80) + (p.closedFor || 90);
         p.open = ((time + (p.phase || 0)) % cycle) < (p.openFor || 80);
       }
       if (p.hit > 0) p.hit--;
-      if (p.kind === 'cookie' && p.alive && p.crumbleTimer > 0) {
+      if (behavior === 'cookie' && p.alive && p.crumbleTimer > 0) {
         p.crumbleTimer = Math.max(0, p.crumbleTimer - (player.onGround ? 0 : 0.5));
       }
     }
@@ -1490,7 +1680,8 @@
     let landing = null;
     let landingY = Infinity;
     for (const p of platforms) {
-      if (!p.alive || p.kind === 'sugarGate' || (p.kind === 'blinkGate' && !p.open)) continue;
+      const behavior = platformBehaviorKind(p);
+      if (!p.alive || behavior === 'sugarGate' || (behavior === 'blinkGate' && !p.open)) continue;
       const overlapX = player.x + player.w > p.x + 5 && player.x < p.x + p.w - 5;
       const wasAbove = prevY + player.h <= p.y + 2;
       const crossedTop = player.y + player.h >= p.y && player.y + player.h <= p.y + p.h + 26;
@@ -1501,10 +1692,11 @@
     }
 
     if (landing) {
+      const landingKind = platformBehaviorKind(landing);
       player.y = landing.y - player.h;
       player.onGround = true;
       if (!wasGrounded) player.landedTimer = 8;
-      if (landing.kind === 'bounce') {
+      if (landingKind === 'bounce') {
         player.vy = -14.8;
         player.onGround = false;
         burst(player.x + player.w / 2, landing.y, 16, '#fff');
@@ -1513,12 +1705,12 @@
       } else {
         player.vy = 0;
         if (isSafePlatform(landing)) player.lastSafe = { x: player.x, y: player.y };
-        if (landing.kind === 'moving' || landing.kind === 'raft') player.x += landing.speed * landing.dir;
-        if (landing.kind === 'float' || landing.kind === 'elevator') player.y += landing.speed * landing.dir;
-        if (landing.kind === 'tilt') player.vx += (player.x + player.w / 2 < landing.x + landing.w / 2 ? -0.18 : 0.18);
-        if (landing.kind === 'slide') player.vx += landing.slideDir || 0.26;
-        player.surfaceKind = landing.kind;
-        if (landing.kind === 'cookie') {
+        if ((landingKind === 'moving' || landingKind === 'raft') && platformHasHorizontalMotion(landing)) player.x += landing.speed * landing.dir;
+        if ((landingKind === 'float' || landingKind === 'elevator') && platformHasVerticalMotion(landing)) player.y += landing.speed * landing.dir;
+        if (landingKind === 'tilt') player.vx += (player.x + player.w / 2 < landing.x + landing.w / 2 ? -0.18 : 0.18);
+        if (landingKind === 'slide') player.vx += landing.slideDir || 0.26;
+        player.surfaceKind = landingKind;
+        if (landingKind === 'cookie') {
           landing.crumbleTimer = Math.min(90, (landing.crumbleTimer || 0) + 2);
           if (landing.crumbleTimer === 58) sound('gate');
           if (landing.crumbleTimer >= 108) {
@@ -1536,7 +1728,7 @@
     }
 
     for (const p of platforms) {
-      if (!p.alive || p.kind !== 'break') continue;
+      if (!p.alive || platformBehaviorKind(p) !== 'break') continue;
       if (rectsOverlap(player, p)) {
         if (inRush || player.vy < 0) {
           p.alive = false;
@@ -1550,8 +1742,9 @@
     }
 
     for (const p of platforms) {
-      if (!p.alive || (p.kind !== 'sugarGate' && p.kind !== 'blinkGate')) continue;
-      if (p.kind === 'blinkGate' && p.open) continue;
+      const behavior = platformBehaviorKind(p);
+      if (!p.alive || (behavior !== 'sugarGate' && behavior !== 'blinkGate')) continue;
+      if (behavior === 'blinkGate' && p.open) continue;
       if (rectsOverlap(player, p)) {
         if (inRush) {
           p.alive = false;
@@ -1659,7 +1852,8 @@
       const pad = { x: cp.x, y: cp.y, w: 46, h: 46 };
       if (!cp.active && rectsOverlap(player, pad)) {
         cp.active = true;
-        player.lastSafe = { x: player.x, y: player.y };
+        const safeCheckpoint = resolveSafeSpawnPosition(player, level.start);
+        player.lastSafe = { x: safeCheckpoint.x, y: safeCheckpoint.y };
         player.hearts = Math.min(maxHearts, player.hearts + 1);
         burst(cp.x + 22, cp.y + 12, 14, '#fff27a');
         sound('checkpoint');
@@ -1674,9 +1868,20 @@
       chordWin();
     }
 
-    if (player.y > H + 120) loseLife('fall');
+    if (player.y > H + 120) {
+      if (respawnGraceTimer > 0) {
+        placePlayerAtSafeSpawn(player.lastSafe, {
+          fallback: level.start,
+          graceFrames: spawnGraceFrames,
+          invulnFrames: 90
+        });
+      } else {
+        loseLife('fall');
+      }
+    }
 
     if (player.invuln > 0) player.invuln--;
+    if (respawnGraceTimer > 0) respawnGraceTimer--;
     if (player.landedTimer > 0) player.landedTimer--;
     if (player.hurtTimer > 0) player.hurtTimer--;
     if (levelIntroTimer > 0) levelIntroTimer--;
@@ -1684,7 +1889,10 @@
     if (wonderTextTimer > 0) wonderTextTimer--;
     if (sugarTimer > 0) {
       sugarTimer--;
-      if (time % 4 === 0) particles.push({ x: player.x + player.w / 2 - player.face * 8, y: player.y + 28, vx: -player.face * 0.7 + (Math.random() - 0.5), vy: (Math.random() - 0.5) * 1.5, r: 3 + Math.random() * 3, life: 28, color: '#fff27a' });
+      const trailRate = reducedEffectsMode() ? 6 : 4;
+      if (time % trailRate === 0 && particles.length < maxParticleCount()) {
+        particles.push({ x: player.x + player.w / 2 - player.face * 8, y: player.y + 28, vx: -player.face * 0.7 + (Math.random() - 0.5), vy: (Math.random() - 0.5) * 1.5, r: 3 + Math.random() * 3, life: 28, color: '#fff27a' });
+      }
     }
 
     player.anim += Math.max(0.08, Math.abs(player.vx) * 0.12);
@@ -1728,13 +1936,11 @@
   function respawn() {
     levelTimer = levelTimeLimit;
     footstepCooldown = 0;
-    player.x = player.lastSafe.x;
-    player.y = player.lastSafe.y;
-    player.vx = 0;
-    player.vy = 0;
-    player.onGround = false;
-    snapSpawnToGround();
-    player.invuln = 132;
+    placePlayerAtSafeSpawn(player.lastSafe, {
+      fallback: level.start,
+      graceFrames: spawnGraceFrames,
+      invulnFrames: 132
+    });
     player.hurtTimer = 0;
     player.hearts = maxHearts;
     sugar = Math.max(0, sugar - 20);
@@ -1743,7 +1949,8 @@
 
   function burst(x, y, count, color) {
     const colors = [color, '#79f0c3', '#ff74ba', '#fff5dc', '#71dfff', '#f7a14a'];
-    for (let i = 0; i < count; i++) {
+    const safeCount = reducedEffectsMode() ? Math.ceil(count * 0.55) : count;
+    for (let i = 0; i < safeCount; i++) {
       particles.push({
         x, y,
         vx: (Math.random() - 0.5) * 8,
@@ -1753,6 +1960,7 @@
         color: colors[(Math.random() * colors.length) | 0]
       });
     }
+    clampParticles();
   }
 
   function updateParticles() {
@@ -1763,11 +1971,13 @@
       p.life--;
     }
     for (let i = particles.length - 1; i >= 0; i--) if (particles[i].life <= 0) particles.splice(i, 1);
+    clampParticles();
   }
 
   function updateAmbientParticles() {
     if (!level) return;
-    const cfg = THEME_AMBIENCE[level.theme] || THEME_AMBIENCE.meadow;
+    const targetCount = ambientParticleTargetCount(level.theme);
+    if (ambientParticles.length > targetCount) ambientParticles.length = targetCount;
     for (let i = 0; i < ambientParticles.length; i++) {
       const p = ambientParticles[i];
       p.x += p.vx;
@@ -1779,7 +1989,7 @@
         ambientParticles[i].y = Math.random() * H;
       }
     }
-    while (ambientParticles.length < cfg.count) ambientParticles.push(buildAmbientParticle(level.theme));
+    while (ambientParticles.length < targetCount) ambientParticles.push(buildAmbientParticle(level.theme));
   }
 
   function draw() {
@@ -1789,24 +1999,33 @@
     ctx.save();
     ctx.translate(sx, sy);
 
+    if (gameState === 'map') {
+      drawWorldMap();
+      drawHUD();
+      drawPerformanceOverlay();
+      ctx.restore();
+      return;
+    }
+
     drawBackground();
-    drawAmbientParticles();
-    ctx.save();
-    ctx.translate(-cameraX, 0);
-    drawDecor();
-    drawPlatforms();
-    drawSigns();
-    drawFriendlyNpcs();
-    drawCheckpoints();
-    drawGoal();
-    drawCandies();
-    drawSpecials();
-    drawEnemies();
-    drawPlayer();
-    drawParticles();
-    ctx.restore();
+    if (gameState !== 'menu') drawAmbientParticles();
+    if (gameState !== 'menu') {
+      ctx.save();
+      ctx.translate(-cameraX, 0);
+      drawDecor();
+      drawPlatforms();
+      drawSigns();
+      drawFriendlyNpcs();
+      drawCheckpoints();
+      drawGoal();
+      drawCandies();
+      drawSpecials();
+      drawEnemies();
+      drawPlayer();
+      drawParticles();
+      ctx.restore();
+    }
     drawHUD();
-    if (gameState === 'map') drawWorldMap();
     if (levelIntroTimer > 0 && gameState === 'playing' && winTimer === 0) drawLevelIntro();
     if (storyTimer > 0 && gameState === 'playing' && winTimer === 0) drawStoryBanner();
     if (wonderTextTimer > 0 && gameState === 'playing' && winTimer === 0) drawWonderBanner();
@@ -1815,12 +2034,14 @@
     if (gameState === 'escape') drawEscape();
     if (gameState === 'ending') drawEnding();
     if (gameState === 'gameover') drawGameOver();
+    drawPerformanceOverlay();
 
     ctx.restore();
   }
 
   function drawBackground() {
     if (!level) return;
+    const reduced = reducedEffectsMode();
     const theme = LEVEL_BACKGROUNDS[level.theme] || LEVEL_BACKGROUNDS.meadow;
     const bg = backgroundImages[level.theme] || backgroundImages.meadow;
     if (bg && bg.complete && bg.naturalWidth > 0) {
@@ -1836,7 +2057,7 @@
 
     ctx.globalAlpha = 0.08;
     ctx.fillStyle = theme.haze;
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < (reduced ? 2 : 4); i++) {
       const x = ((i * 420 - time * 0.14) % (W + 520)) - 140;
       ctx.beginPath();
       ctx.ellipse(x, 88 + (i % 2) * 36, 74, 24, 0, 0, Math.PI * 2);
@@ -1847,7 +2068,7 @@
     ctx.save();
     ctx.globalAlpha = 0.08;
     ctx.fillStyle = '#fffaf1';
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < (reduced ? 1 : 3); i++) {
       const x = ((i * 310 + time * 0.22) % (W + 240)) - 120;
       ctx.fillRect(x, 0, 46, H);
     }
@@ -1858,7 +2079,6 @@
     if (!level) return;
     for (const p of ambientParticles) {
       const pulse = 0.72 + Math.sin(p.twinkle) * 0.28;
-      ctx.save();
       ctx.globalAlpha = p.alpha * pulse;
       if (p.kind === 'dust') {
         ctx.fillStyle = p.color;
@@ -1880,8 +2100,8 @@
         ctx.ellipse(p.x, p.y, p.r * 0.92, p.r * 0.72, Math.sin(p.twinkle) * 0.25, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.restore();
     }
+    ctx.globalAlpha = 1;
   }
 
   function drawDecor() {
@@ -1897,9 +2117,9 @@
       ctx.translate(0, bob);
       if (sway !== 0) ctx.rotate((sway * Math.PI) / 720);
       if (d.tint) {
-        ctx.filter = `drop-shadow(0 0 10px ${d.tint})`;
+        ctx.filter = renderFilter(`drop-shadow(0 0 10px ${d.tint})`);
       } else if (d.img.includes('arch')) {
-        ctx.filter = 'drop-shadow(0 0 10px rgba(255,255,255,0.25))';
+        ctx.filter = renderFilter('drop-shadow(0 0 10px rgba(255,255,255,0.25))');
       }
       drawImageBottom(img, d.x, d.y, d.h || 72, d.w, d.flip || 1);
       if (d.img.includes('arch') && Math.sin(time * 0.06 + d.x * 0.03) > 0.68) {
@@ -1934,7 +2154,7 @@
       const frame = assets[npc.frame];
       if (!frame) continue;
       ctx.save();
-      ctx.filter = 'drop-shadow(0 0 8px rgba(255,248,239,0.65))';
+      ctx.filter = renderFilter('drop-shadow(0 0 8px rgba(255,248,239,0.65))');
       drawImageBottom(frame, npc.x, npc.y + bob, 42, 42, 1);
       if (npc.text) {
         roundRect(npc.x - 10, npc.y - 34 + bob, 122, 24, 10, 'rgba(255,248,239,0.88)', 'rgba(255,255,255,0.65)');
@@ -1953,32 +2173,90 @@
   }
 
   function basePlatformImage(p) {
-    if (p.kind === 'icing') return p.w > 260 ? assets.icing_long : assets.icing_block2;
-    if (p.kind === 'choco') return p.w > 200 ? assets.choco_long : assets.choco_double;
-    if (p.kind === 'cookie') {
+    const kind = platformBehaviorKind(p);
+    if (kind === 'icing') return p.w > 260 ? assets.icing_long : assets.icing_block2;
+    if (kind === 'choco') return p.w > 200 ? assets.choco_long : assets.choco_double;
+    if (kind === 'cookie') {
       if (p.crumbleTimer >= 52) return assets.cookie_cracked_3;
       if (p.crumbleTimer >= 30) return assets.cookie_cracked_2;
       if (p.crumbleTimer >= 12) return assets.cookie_cracked_1;
       return p.w > 160 ? assets.cookie_long : assets.cookie_block;
     }
-    if (p.kind === 'wafer') return p.w > 200 ? assets.wafer_long : assets.wafer_platform;
-    if (p.kind === 'syrup') return p.w > 140 ? assets.choco_long : assets.choco_double;
-    if (p.kind === 'tilt') return assets.wafer_bar;
-    if (p.kind === 'slide') return assets.icing_block2;
-    if (p.kind === 'moving') return assets.wafer_moving;
-    if (p.kind === 'raft') return assets.marshmallow_2;
-    if (p.kind === 'elevator') return assets.icing_block;
-    if (p.kind === 'break') return p.hit ? assets.cookie_cracked_2 : assets.cookie_cracked_1;
+    if (kind === 'wafer') return p.w > 200 ? assets.wafer_long : assets.wafer_platform;
+    if (kind === 'syrup') return p.w > 140 ? assets.choco_long : assets.choco_double;
+    if (kind === 'tilt') return assets.wafer_bar;
+    if (kind === 'slide') return assets.icing_block2;
+    if (kind === 'moving') return assets.wafer_moving;
+    if (kind === 'raft') return assets.marshmallow_2;
+    if (kind === 'elevator') return assets.icing_block;
+    if (kind === 'break') return p.hit ? assets.cookie_cracked_2 : assets.cookie_cracked_1;
     return assets.icing_long;
+  }
+
+  function aliasPlatformImage(p, baseImg) {
+    if (p.kind === 'lollipopStick') return assets.candy_cane_straight || assets.rod_pink || baseImg;
+    if (p.kind === 'candyDisc') return assets.lollipop_swirl || assets.lollipop_green || baseImg;
+    if (p.kind === 'lollipopChip') return p.crumbleTimer > 0 ? baseImg : assets.candy_cane_pink || assets.lollipop_sprinkle || baseImg;
+    if (p.kind === 'swirlLift') return assets.lollipop_swirl || assets.candy_cane_pink || baseImg;
+    if (p.kind === 'candyRoad') return p.w > 180 ? assets.rod_brown || assets.choco_long || baseImg : assets.choco_double || baseImg;
+    if (p.kind === 'pretzelBridge') return assets.rod_orange || assets.candy_cane || baseImg;
+    if (p.kind === 'pretzelCrumble') return p.crumbleTimer > 0 ? baseImg : assets.rod_orange || assets.candy_cane || baseImg;
+    if (p.kind === 'pretzelTilt') return assets.wafer_bar || assets.rod_brown || baseImg;
+    if (p.kind === 'licoriceRail') return assets.rod_brown || assets.wafer_bar || baseImg;
+    if (p.kind === 'licoriceMover') return assets.rod_pink || assets.wafer_moving || baseImg;
+    if (p.kind === 'pretzelBreak') return p.hit ? assets.wafer_broken || assets.cookie_cracked_2 || baseImg : assets.rod_brown || baseImg;
+    if (p.kind === 'coneRaft') return assets.wafer_platform || assets.marshmallow_2 || baseImg;
+    if (p.kind === 'frostingLedge') return p.w > 170 ? assets.icing_strip || assets.frosting_ground || baseImg : assets.icing_block2 || baseImg;
+    if (p.kind === 'frozenCreamShelf') return p.w > 170 ? assets.icing_strip || assets.icing_long || baseImg : assets.icing_block2 || baseImg;
+    if (p.kind === 'coneShelf') return p.crumbleTimer > 0 ? baseImg : assets.wafer_platform || assets.marshmallow_2 || baseImg;
+    if (p.kind === 'slickCreamSlide') return assets.icing_strip || assets.icing_block2 || baseImg;
+    if (p.kind === 'creamMover') return assets.icing_strip || assets.wafer_moving || baseImg;
+    if (p.kind === 'frozenBreak') return p.hit ? assets.cookie_cracked_2 || baseImg : assets.wafer_broken || assets.icing_block || baseImg;
+    if (p.kind === 'waffleTile') return p.w > 190 ? assets.wafer_long || baseImg : assets.wafer_platform || baseImg;
+    if (p.kind === 'waferBridge') return assets.wafer_platform || assets.wafer_bar || baseImg;
+    if (p.kind === 'forestCookieStep') return p.crumbleTimer > 0 ? baseImg : assets.wafer_block2 || assets.wafer_platform || baseImg;
+    if (p.kind === 'candyForestLedge') return p.w > 170 ? assets.wafer_long || assets.frosting_ground || baseImg : assets.wafer_platform || baseImg;
+    if (p.kind === 'movingWaffleShelf') return assets.wafer_moving || assets.wafer_platform || baseImg;
+    if (p.kind === 'syrupPatch') return assets.choco_long || assets.choco_double || baseImg;
+    if (p.kind === 'waffleBreak') return p.hit ? assets.wafer_broken || assets.cookie_cracked_2 || baseImg : assets.wafer_block3 || baseImg;
+    if (p.kind === 'candyCrumble') return p.hit ? assets.cookie_cracked_2 || baseImg : assets.lollipop_orange || baseImg;
+    if (p.kind === 'cakeLayer') return p.w > 180 ? assets.frosting_ground || assets.icing_long || baseImg : assets.cake_disc_1 || baseImg;
+    if (p.kind === 'frostingWall') return p.w > 170 ? assets.frosting_ground || assets.icing_long || baseImg : assets.icing_block || baseImg;
+    if (p.kind === 'sprinkleBridge') return assets.candy_cane_pink || assets.wafer_platform || baseImg;
+    if (p.kind === 'fondantSlab') return assets.gate_piece || assets.choco_double || baseImg;
+    if (p.kind === 'cakeElevator') return assets.cake_disc_3 || assets.icing_block || baseImg;
+    if (p.kind === 'candyGatePlatform') return assets.gate_piece || assets.wafer_moving || baseImg;
+    if (p.kind === 'cupcakeBlock') return p.hit ? assets.gate_broken || assets.cookie_cracked_2 || baseImg : assets.cake_disc_2 || assets.cookie_block || baseImg;
+    if (p.kind === 'candyCastleGate' || p.kind === 'candyBlinkGate') return assets.gate_intact || baseImg;
+    if (p.kind === 'dreamDoorBase') return assets.gate_piece || assets.choco_double || baseImg;
+    if (p.kind === 'dreamDoorPiece') return p.crumbleTimer > 0 ? baseImg : assets.gate_piece || assets.cake_disc_2 || baseImg;
+    if (p.kind === 'sugarCrystalLedge') return p.w > 170 ? assets.frosting_ground || assets.icing_long || baseImg : assets.crystal || assets.icing_block || baseImg;
+    if (p.kind === 'starPlatform') return p.crumbleTimer > 0 ? baseImg : assets.star_blue || assets.cake_disc_3 || baseImg;
+    if (p.kind === 'finalGatePlatform') return assets.gate_piece || assets.wafer_moving || baseImg;
+    if (p.kind === 'finalBlinkGate') return assets.gate_intact || baseImg;
+    if (p.kind === 'gateShard') return p.hit ? assets.gate_broken || assets.cookie_cracked_2 || baseImg : assets.gate_piece || baseImg;
+    if (p.kind === 'starLift') return assets.cake_disc_3 || assets.star_blue || baseImg;
+    if (p.kind === 'dreamGate') return assets.gate_intact || baseImg;
+    return baseImg;
   }
 
   function themedPlatformImage(p, theme) {
     const baseImg = basePlatformImage(p);
+    if (PLATFORM_KIND_ALIASES[p.kind]) return aliasPlatformImage(p, baseImg);
     if (theme === 'meadow' || theme === 'lollipops' || theme === 'gummy') {
       if (p.kind === 'icing') return p.w > 180 ? assets.candy_cane_straight || assets.icing_strip || baseImg : assets.lollipop_green || baseImg;
       if (p.kind === 'cookie') return p.crumbleTimer > 0 ? baseImg : assets.candy_cane_pink || assets.lollipop_swirl || baseImg;
       if (p.kind === 'moving') return assets.rod_pink || assets.wafer_moving || baseImg;
       if (p.kind === 'break') return p.hit ? assets.cookie_cracked_2 : assets.lollipop_orange || baseImg;
+    }
+    if (theme === 'licorice') {
+      if (p.kind === 'choco') return p.w > 180 ? assets.rod_brown || assets.choco_long || baseImg : assets.choco_double || baseImg;
+      if (p.kind === 'cookie') return p.crumbleTimer > 0 ? baseImg : assets.rod_orange || assets.candy_cane || baseImg;
+      if (p.kind === 'tilt') return assets.wafer_bar || assets.rod_brown || baseImg;
+      if (p.kind === 'wafer') return assets.candy_cane_straight || assets.wafer_platform || baseImg;
+      if (p.kind === 'moving') return assets.rod_pink || assets.wafer_moving || baseImg;
+      if (p.kind === 'icing') return assets.candy_cane_pink || assets.icing_strip || baseImg;
+      if (p.kind === 'break') return p.hit ? assets.wafer_broken || assets.cookie_cracked_2 || baseImg : assets.rod_brown || baseImg;
     }
     if (theme === 'falls' || theme === 'mallows') {
       if (p.kind === 'icing' || p.kind === 'slide') return p.w > 170 ? assets.icing_strip || assets.icing_long || baseImg : assets.icing_block2 || baseImg;
@@ -2004,8 +2282,12 @@
   }
 
   function platformThemeStyle(theme, kind) {
+    const behavior = platformBehaviorKind(kind);
     if (theme === 'meadow' || theme === 'lollipops' || theme === 'gummy') {
-      return { glow: 'rgba(255,158,208,0.22)', stroke: 'rgba(255,255,255,0.58)', filter: kind === 'break' ? 'none' : 'saturate(1.12) brightness(1.04)', accent: '#ff74ba' };
+      return { glow: 'rgba(255,158,208,0.22)', stroke: 'rgba(255,255,255,0.58)', filter: behavior === 'break' ? 'none' : 'saturate(1.12) brightness(1.04)', accent: '#ff74ba' };
+    }
+    if (theme === 'licorice') {
+      return { glow: 'rgba(247,196,113,0.23)', stroke: 'rgba(255,242,213,0.62)', filter: behavior === 'break' ? 'none' : 'saturate(1.08) brightness(1.02)', accent: '#f7c471' };
     }
     if (theme === 'falls' || theme === 'mallows') {
       return { glow: 'rgba(137,228,255,0.26)', stroke: 'rgba(238,252,255,0.70)', filter: 'saturate(0.95) brightness(1.12)', accent: '#89e4ff' };
@@ -2023,6 +2305,7 @@
   }
 
   function drawPlatformAccent(p, theme, drawY, style) {
+    const behavior = platformBehaviorKind(p);
     ctx.save();
     ctx.globalAlpha = 0.58;
     ctx.strokeStyle = style.stroke;
@@ -2035,18 +2318,63 @@
     if (theme === 'meadow' || theme === 'lollipops' || theme === 'gummy') {
       const icon = theme === 'gummy' ? assets.gumdrop_pink : assets.lollipop_swirl;
       if (icon && p.w >= 84) drawImageCentered(icon, p.x + p.w / 2, drawY + 1, 18);
+    } else if (theme === 'licorice') {
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(91,49,31,0.52)';
+      for (let x = p.x + 18; x < p.x + p.w - 12; x += 34) {
+        ctx.beginPath();
+        ctx.moveTo(x, drawY + 9);
+        ctx.quadraticCurveTo(x + 8, drawY - 2, x + 18, drawY + 9);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(255,138,184,0.64)';
+      if (behavior === 'moving' || behavior === 'tilt' || p.kind === 'licoriceRail') {
+        ctx.fillRect(p.x + 12, drawY + 7, Math.max(0, p.w - 24), 4);
+      }
     } else if (theme === 'falls' || theme === 'mallows') {
       ctx.fillStyle = 'rgba(255,255,255,0.72)';
       ctx.beginPath();
       ctx.arc(p.x + p.w - 20, drawY + 2, 5, 0, Math.PI * 2);
       ctx.arc(p.x + 20, drawY + 3, 4, 0, Math.PI * 2);
       ctx.fill();
-    } else if ((theme === 'woods' || theme === 'jungle') && p.kind === 'syrup') {
-      ctx.fillStyle = 'rgba(122,72,46,0.55)';
-      ctx.fillRect(p.x + 8, drawY + 4, Math.max(0, p.w - 16), 7);
+      if (behavior === 'slide' || p.kind === 'frostingLedge') {
+        ctx.strokeStyle = 'rgba(137,228,255,0.70)';
+        ctx.lineWidth = 2;
+        for (let x = p.x + 14; x < p.x + p.w - 8; x += 28) {
+          ctx.beginPath();
+          ctx.moveTo(x, drawY + 9);
+          ctx.lineTo(x + 14, drawY + 2);
+          ctx.stroke();
+        }
+      }
+    } else if (theme === 'woods' || theme === 'jungle') {
+      if (behavior === 'syrup') {
+        ctx.fillStyle = 'rgba(122,72,46,0.55)';
+        ctx.fillRect(p.x + 8, drawY + 4, Math.max(0, p.w - 16), 7);
+      } else {
+        ctx.strokeStyle = 'rgba(122,72,46,0.22)';
+        ctx.lineWidth = 1.5;
+        for (let x = p.x + 20; x < p.x + p.w - 10; x += 28) {
+          ctx.beginPath();
+          ctx.moveTo(x, drawY + 1);
+          ctx.lineTo(x, drawY + Math.max(10, p.h));
+          ctx.stroke();
+        }
+      }
     } else if (theme === 'courtyard' || theme === 'keep' || theme === 'sky') {
       const icon = theme === 'keep' ? assets.gate_piece : assets.star_pink;
       if (icon && p.w >= 78) drawImageCentered(icon, p.x + p.w / 2, drawY + 1, 16);
+      if (theme === 'keep') {
+        ctx.fillStyle = 'rgba(255,242,122,0.38)';
+        for (let x = p.x + 16; x < p.x + p.w - 8; x += 36) {
+          ctx.beginPath();
+          ctx.moveTo(x, drawY + 3);
+          ctx.lineTo(x + 5, drawY - 4);
+          ctx.lineTo(x + 10, drawY + 3);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
     }
     ctx.restore();
   }
@@ -2054,7 +2382,7 @@
   function drawThemedPlatformSprite(img, p, drawY, h, style) {
     roundRect(p.x - 3, drawY - 3, p.w + 6, Math.max(16, p.h + 8), 7, style.glow, style.stroke);
     ctx.save();
-    ctx.filter = style.filter;
+    ctx.filter = renderFilter(style.filter);
     drawImageBottom(img, p.x, drawY + p.h + 12, h, p.w);
     ctx.restore();
     drawPlatformAccent(p, currentPlatformTheme(), drawY, style);
@@ -2063,7 +2391,17 @@
   function drawThemedBouncePlatform(p, theme) {
     const pulse = Math.sin(time * 0.18 + p.x * 0.02) * 2;
     const style = platformThemeStyle(theme, p.kind);
-    const img = theme === 'woods' || theme === 'jungle'
+    const img = p.kind === 'iceCreamScoop'
+      ? assets.gumdrop_blue || assets.marshmallow_2 || assets.marshmallow_1
+      : p.kind === 'syrupSpring'
+      ? assets.gumdrop_orange || assets.jelly_orange || assets.marshmallow_1
+      : p.kind === 'sprinkleBounce'
+      ? assets.cake_disc_3 || assets.gumdrop_pink || assets.marshmallow_1
+      : p.kind === 'starBounce'
+      ? assets.star_purple || assets.cake_disc_3 || assets.marshmallow_1
+      : theme === 'licorice'
+      ? assets.jelly_orange || assets.gumdrop_orange || assets.marshmallow_1
+      : theme === 'woods' || theme === 'jungle'
       ? assets.gumdrop_green || assets.marshmallow_1
       : theme === 'courtyard' || theme === 'keep' || theme === 'sky'
         ? assets.cake_disc_3 || assets.marshmallow_1
@@ -2076,15 +2414,25 @@
 
   function drawThemedFloatPlatform(p, theme) {
     const style = platformThemeStyle(theme, p.kind);
-    const top = theme === 'meadow' || theme === 'lollipops' || theme === 'gummy'
+    const top = p.kind === 'swirlLift'
+      ? assets.lollipop_swirl || assets.candy_cane_pink
+      : p.kind === 'starLift'
+        ? assets.cake_disc_3 || assets.star_blue
+        : theme === 'meadow' || theme === 'lollipops' || theme === 'gummy'
       ? assets.candy_cane_pink || assets.candy_cane_straight || assets.lollipop_swirl
+      : theme === 'licorice'
+        ? assets.rod_orange || assets.candy_cane || assets.wafer_bar
       : theme === 'falls' || theme === 'mallows'
         ? assets.marshmallow_2 || assets.icing_strip
         : theme === 'woods' || theme === 'jungle'
           ? assets.wafer_platform || assets.wafer_long
           : assets.cake_disc_2 || assets.frosting_ground || assets.icing_block;
-    const stem = theme === 'woods' || theme === 'jungle'
+    const stem = p.kind === 'starLift'
+      ? assets.gate_post || assets.frosting_column || assets.lollipop_green
+      : theme === 'woods' || theme === 'jungle'
       ? assets.wafer_pole || assets.lollipop_green
+      : theme === 'licorice'
+        ? assets.rod_brown || assets.wafer_pole || assets.lollipop_green
       : theme === 'courtyard' || theme === 'keep' || theme === 'sky'
         ? assets.frosting_column || assets.gate_post || assets.lollipop_green
         : assets.lollipop_pink || assets.lollipop_green;
@@ -2097,7 +2445,7 @@
     const style = platformThemeStyle(theme, p.kind);
     ctx.save();
     ctx.globalAlpha = openAlpha;
-    ctx.filter = style.filter;
+    ctx.filter = renderFilter(style.filter);
     drawImageBottom(assets.gate_intact, p.x, p.y + p.h, p.h + 18, p.w);
     if (assets.gate_post && p.w >= 56) {
       drawImageBottom(assets.gate_post, p.x - 8, p.y + p.h, p.h + 8, 16);
@@ -2112,11 +2460,12 @@
     const theme = currentPlatformTheme();
     for (const p of platforms) {
       if (!p.alive) continue;
+      const behavior = platformBehaviorKind(p);
       let drawY = p.y + (p.hit ? Math.sin(time * 0.5) * 2 : 0);
       let img = themedPlatformImage(p, theme);
       let h = p.h + 16;
       const style = platformThemeStyle(theme, p.kind);
-      if (p.kind === 'sugarGate') {
+      if (behavior === 'sugarGate') {
         drawThemedGate(p, theme, 0.95, assets.star_purple);
         ctx.save();
         ctx.globalAlpha = 0.22 + Math.sin(time * 0.12 + p.x * 0.01) * 0.08;
@@ -2124,19 +2473,19 @@
         ctx.restore();
         continue;
       }
-      if (p.kind === 'blinkGate') {
+      if (behavior === 'blinkGate') {
         drawThemedGate(p, theme, p.open ? 0.25 : 0.95, assets.star_blue);
         continue;
       }
-      if (p.kind === 'bounce') {
+      if (behavior === 'bounce') {
         drawThemedBouncePlatform(p, theme);
         continue;
       }
-      if (p.kind === 'float') {
+      if (behavior === 'float') {
         drawThemedFloatPlatform(p, theme);
         continue;
       }
-      if (p.kind === 'raft') drawY += Math.sin(time * 0.08 + p.x * 0.01) * 3;
+      if (behavior === 'raft') drawY += Math.sin(time * 0.08 + p.x * 0.01) * 3;
       drawThemedPlatformSprite(img, p, drawY, h, style);
     }
   }
@@ -2192,7 +2541,7 @@
       const drawH = e.giant ? 78 : e.kind === 'jaw' ? 44 : e.kind === 'beetle' ? 42 : 48;
       const drawW = e.giant ? 78 : e.kind === 'jaw' ? 44 : 46;
       ctx.save();
-      if (e.alert && !e.giant) ctx.filter = 'drop-shadow(0 0 8px rgba(255,245,220,0.8))';
+      if (e.alert && !e.giant) ctx.filter = renderFilter('drop-shadow(0 0 8px rgba(255,245,220,0.8))');
       drawImageBottom(assets[frame], e.x - (e.giant ? 12 : 6), y + (e.giant ? 10 : 8), drawH, drawW, e.vx < 0 ? -1 : 1);
       if (e.alert && !e.giant) {
         ctx.globalAlpha = 0.45 + Math.sin(time * 0.25) * 0.15;
@@ -2235,14 +2584,14 @@
     if (sugarTimer > 0) {
       ctx.save();
       ctx.globalAlpha = 0.55 + Math.sin(time * 0.3) * 0.15;
-      ctx.filter = 'drop-shadow(0 0 18px rgba(255, 239, 120, 0.95))';
+      ctx.filter = renderFilter('drop-shadow(0 0 18px rgba(255, 239, 120, 0.95))');
       drawImageBottom(frame, player.x - 8, player.y + player.h + 6, heroHeight, undefined, player.face > 0 ? 1 : -1);
       ctx.restore();
     }
     if (flair) {
       ctx.save();
       ctx.globalAlpha = 0.24 + Math.sin(time * 0.18) * 0.08;
-      ctx.filter = 'drop-shadow(0 0 12px rgba(255,242,122,0.95))';
+      ctx.filter = renderFilter('drop-shadow(0 0 12px rgba(255,242,122,0.95))');
       drawImageBottom(frame, player.x - 8, player.y + player.h + 6, heroHeight + 2, undefined, player.face > 0 ? 1 : -1);
       ctx.restore();
     }
@@ -2283,11 +2632,77 @@
     ctx.globalAlpha = 1;
   }
 
-  function isMobileCanvas() {
+  function refreshCanvasProfile() {
     const coarse = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
     const stage = canvas.parentElement;
     const rect = stage ? stage.getBoundingClientRect() : { width: window.innerWidth, height: window.innerHeight };
-    return coarse || rect.width < 1180 || rect.height < 620 || Math.min(window.innerWidth, window.innerHeight) < 760;
+    const minViewport = Math.min(window.innerWidth, window.innerHeight);
+    compactCanvasCached = coarse || rect.width < 1180 || rect.height < 620 || minViewport < 760;
+    coarsePointerCached = coarse;
+    tabletCanvasCached = compactCanvasCached && minViewport >= 760;
+    reducedEffectsActive = compactCanvasCached;
+    canvasProfileReady = true;
+  }
+
+  function isMobileCanvas() {
+    if (!canvasProfileReady) refreshCanvasProfile();
+    return compactCanvasCached;
+  }
+
+  function reducedEffectsMode() {
+    if (!canvasProfileReady) refreshCanvasProfile();
+    return reducedEffectsActive;
+  }
+
+  function renderFilter(filterValue) {
+    return reducedEffectsMode() ? 'none' : filterValue;
+  }
+
+  function updatePerformanceSample(now) {
+    if (!perfLastFrameTime) {
+      perfLastFrameTime = now;
+      perfLastSampleTime = now;
+      return;
+    }
+    perfFrameCount++;
+    if (now - perfLastSampleTime >= 500) {
+      perfFps = Math.round((perfFrameCount * 1000) / (now - perfLastSampleTime));
+      perfFrameCount = 0;
+      perfLastSampleTime = now;
+    }
+    perfLastFrameTime = now;
+  }
+
+  function drawPerformanceOverlay() {
+    if (!perfOverlayVisible) return;
+    const compact = isMobileCanvas();
+    const rows = [
+      `FPS ${perfFps || '--'}`,
+      `State ${gameState}`,
+      `Particles ${particles.length}`,
+      `Ambient ${ambientParticles.length}`,
+      `Compact ${compact ? 'yes' : 'no'}`,
+      `Touch ${coarsePointerCached ? 'yes' : 'no'}`,
+      `Tablet ${tabletCanvasCached ? 'yes' : 'no'}`,
+      `Reduced ${reducedEffectsMode() ? 'yes' : 'no'}`
+    ];
+    ctx.save();
+    ctx.textAlign = 'start';
+    ctx.textBaseline = 'top';
+    ctx.font = '700 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+    const lineH = 15;
+    const w = 154;
+    const h = rows.length * lineH + 14;
+    roundRect(10, 10, w, h, 8, 'rgba(18,20,34,.78)', 'rgba(255,255,255,.28)');
+    ctx.fillStyle = '#fff8ef';
+    rows.forEach((row, index) => ctx.fillText(row, 18, 17 + index * lineH));
+    ctx.restore();
+  }
+
+  function updateText(element, key, value) {
+    if (hudCache[key] === value) return;
+    hudCache[key] = value;
+    element.textContent = value;
   }
 
   function updateDomHud() {
@@ -2297,19 +2712,26 @@
     const levelSpecialFound = collectedSpecialCount(levelIndex);
     const sideStage = isBranchStageIndex(levelIndex);
     const hiddenBonus = isHiddenBonusStageIndex(levelIndex);
-    hudLevelName.textContent = level.name;
-    hudLevelValue.textContent = hiddenBonus ? 'Bonus' : sideStage ? 'Side' : `${levelIndex + 1}/${MAIN_LEVEL_COUNT}`;
-    hudCandyValue.textContent = String(score);
-    hudTotalValue.textContent = String(totalCandy + score);
-    hudHeartsValue.textContent = `${Math.max(0, player.hearts)}/${maxHearts}`;
-    hudLivesValue.textContent = String(lives);
-    hudTimeValue.textContent = formatLevelTimer(levelTimer);
-    hudSpecialsValue.textContent = levelSpecialTotal > 0 ? `${levelSpecialFound}/${levelSpecialTotal}` : '—';
-    hudTipText.textContent = level.tip;
-    hudLifeText.textContent = `Next extra life at ${nextExtraLifeAt} total candy`;
-    hudChapterText.textContent = level.chapter;
-    hudSugarFill.style.width = `${Math.max(0, Math.min(100, sugarTimer > 0 ? 100 : sugar))}%`;
-    canvas.parentElement.classList.toggle('hud-hidden', !showHud);
+    updateText(hudLevelName, 'levelName', level.name);
+    updateText(hudLevelValue, 'levelValue', hiddenBonus ? 'Bonus' : sideStage ? 'Side' : `${levelIndex + 1}/${MAIN_LEVEL_COUNT}`);
+    updateText(hudCandyValue, 'candy', String(score));
+    updateText(hudTotalValue, 'totalCandy', String(totalCandy + score));
+    updateText(hudHeartsValue, 'hearts', `${Math.max(0, player.hearts)}/${maxHearts}`);
+    updateText(hudLivesValue, 'lives', String(lives));
+    updateText(hudTimeValue, 'time', formatLevelTimer(levelTimer));
+    updateText(hudSpecialsValue, 'specials', levelSpecialTotal > 0 ? `${levelSpecialFound}/${levelSpecialTotal}` : '—');
+    updateText(hudTipText, 'tip', level.tip);
+    updateText(hudLifeText, 'lifeText', `Next extra life at ${nextExtraLifeAt} total candy`);
+    updateText(hudChapterText, 'chapter', level.chapter);
+    const sugarWidth = `${Math.max(0, Math.min(100, sugarTimer > 0 ? 100 : sugar))}%`;
+    if (hudCache.sugarWidth !== sugarWidth) {
+      hudCache.sugarWidth = sugarWidth;
+      hudSugarFill.style.width = sugarWidth;
+    }
+    if (hudCache.showHud !== showHud) {
+      hudCache.showHud = showHud;
+      canvas.parentElement.classList.toggle('hud-hidden', !showHud);
+    }
   }
 
   function drawHUD() {
@@ -2384,6 +2806,7 @@
 
   function drawWorldMap() {
     const compact = isMobileCanvas();
+    const reduced = reducedEffectsMode();
     const reveal = mapRevealTimer > 0 ? 1 - (mapRevealTimer / 42) : 1;
     const globalAllSpecials = allSpecialsComplete();
     const worldMap = currentWorldMapData();
@@ -2444,7 +2867,7 @@
     for (let i = 1; i < nodeLayout.length; i++) {
       const from = nodeLayout[i - 1];
       const to = nodeLayout[i];
-      const openSegment = unlockedLevel >= mapNodeUnlockLevel(WORLD_MAP_NODES[i], i);
+      const openSegment = unlockedMapStep >= mapNodeUnlockStep(WORLD_MAP_NODES[i], i);
       ctx.strokeStyle = openSegment ? 'rgba(255,186,218,.94)' : 'rgba(255,255,255,.30)';
       ctx.lineWidth = compact ? (openSegment ? 10 : 8) : (openSegment ? 11 : 9);
       ctx.beginPath();
@@ -2497,11 +2920,9 @@
     mainNodes.forEach((node, index) => {
       const pos = nodeLayout[index];
       const stageIndex = mapNodeStageIndex(node, index);
-      const unlockLevel = mapNodeUnlockLevel(node, index);
-      const unlocked = unlockedLevel >= unlockLevel;
-      const completed = isBranchStageIndex(stageIndex)
-        ? unlockedLevel > stageIndex - MAIN_LEVEL_COUNT
-        : stageIndex < unlockedLevel;
+      const unlockStep = mapNodeUnlockStep(node, index);
+      const unlocked = unlockedMapStep >= unlockStep;
+      const completed = unlockedMapStep > unlockStep;
       const isNext = index === mapMarkerToIndex;
       const specialTotal = levelSpecialCount(stageIndex);
       const specialFound = collectedSpecialCount(stageIndex);
@@ -2664,8 +3085,9 @@
     drawImageBottom(assets[currentMapHeroFrame()], markerX - (compact ? 18 : 20), markerY + (compact ? 18 : 22), compact ? 42 : 46, undefined, markerFlip);
     if (mapArrivalTimer > 0) {
       const sparkleAlpha = mapArrivalTimer / 24;
-      for (let i = 0; i < 7; i++) {
-        const angle = (Math.PI * 2 * i) / 7 + mapPulse * 1.2;
+      const sparkleCount = reduced ? 4 : 7;
+      for (let i = 0; i < sparkleCount; i++) {
+        const angle = (Math.PI * 2 * i) / sparkleCount + mapPulse * 1.2;
         const radius = (compact ? 14 : 18) + (1 - sparkleAlpha) * (compact ? 14 : 18);
         const sx = markerTo.x + Math.cos(angle) * radius;
         const sy = markerTo.y - 6 + Math.sin(angle) * radius;
@@ -3029,7 +3451,8 @@
     startLoopWhenReady();
   }
 
-  function loop() {
+  function loop(now = performance.now()) {
+    updatePerformanceSample(now);
     update();
     draw();
     requestAnimationFrame(loop);
@@ -3037,6 +3460,7 @@
 
   const saveState = readVersionedSave();
   unlockedLevel = saveState.legacy.unlockedLevel;
+  unlockedMapStep = saveState.legacy.unlockedMapStep;
   selectedHero = saveState.legacy.selectedHero;
   specialProgress = saveState.legacy.specialProgress;
   rewardProgress = saveState.legacy.rewardProgress;

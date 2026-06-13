@@ -1,4 +1,55 @@
 (() => {
+  const PLATFORM_KIND_ALIASES = {
+    lollipopStick: 'icing',
+    candyDisc: 'icing',
+    lollipopChip: 'cookie',
+    swirlLift: 'float',
+    candyRoad: 'choco',
+    pretzelBridge: 'wafer',
+    pretzelCrumble: 'cookie',
+    pretzelTilt: 'tilt',
+    licoriceRail: 'wafer',
+    licoriceMover: 'moving',
+    pretzelBreak: 'break',
+    coneRaft: 'raft',
+    frostingLedge: 'icing',
+    frozenCreamShelf: 'choco',
+    coneShelf: 'cookie',
+    slickCreamSlide: 'slide',
+    creamMover: 'moving',
+    iceCreamScoop: 'bounce',
+    frozenBreak: 'break',
+    waffleTile: 'wafer',
+    waferBridge: 'wafer',
+    forestCookieStep: 'cookie',
+    candyForestLedge: 'icing',
+    movingWaffleShelf: 'moving',
+    syrupSpring: 'bounce',
+    syrupPatch: 'syrup',
+    waffleBreak: 'break',
+    candyCrumble: 'break',
+    cakeLayer: 'icing',
+    frostingWall: 'icing',
+    sprinkleBridge: 'wafer',
+    fondantSlab: 'choco',
+    cakeElevator: 'elevator',
+    candyGatePlatform: 'moving',
+    sprinkleBounce: 'bounce',
+    cupcakeBlock: 'break',
+    candyCastleGate: 'sugarGate',
+    candyBlinkGate: 'blinkGate',
+    dreamDoorBase: 'choco',
+    dreamDoorPiece: 'cookie',
+    sugarCrystalLedge: 'icing',
+    starPlatform: 'cookie',
+    finalGatePlatform: 'moving',
+    starBounce: 'bounce',
+    finalBlinkGate: 'blinkGate',
+    gateShard: 'break',
+    starLift: 'float',
+    dreamGate: 'sugarGate'
+  };
+
   function P(x, y, w, h, kind, extra = {}) { return { x, y, w, h, kind, alive: true, hit: 0, ...extra }; }
   function B(x, y, w = 80) { return P(x, y, w, 18, 'bounce'); }
   function M(x, y, w, h, minX, maxX, speed) { return P(x, y, w, h, 'moving', { minX, maxX, speed, dir: 1 }); }
@@ -24,5 +75,5 @@
   function WZ(x, y, w, h, text, extra = {}) { return { x, y, w, h, text, done: false, ...extra }; }
 
 
-  window.CandyQuestShapes = { P, B, M, R, V, G, TG, E, C, S, D, F, HN, WZ };
+  window.CandyQuestShapes = { P, B, M, R, V, G, TG, E, C, S, D, F, HN, WZ, PLATFORM_KIND_ALIASES };
 })();
