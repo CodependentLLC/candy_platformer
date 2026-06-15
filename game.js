@@ -87,6 +87,12 @@
   let hasActiveRun = false;
   let menuReturnState = 'map';
   let menuStep = 'hero';
+  let canvasProfileReady = false;
+  let compactCanvasCached = false;
+  let coarsePointerCached = false;
+  let tabletCanvasCached = false;
+  let reducedEffectsActive = false;
+  const hudCache = {};
 
   const assets = {};
   const worldMapBackground = new Image();
@@ -164,6 +170,7 @@
   }
 
   function updateUiMode() {
+    refreshCanvasProfile();
     const wrap = canvas.parentElement.parentElement;
     const mapMode = gameState === 'map';
     const compact = isMobileCanvas();
@@ -867,8 +874,22 @@
   }
 
   function resetAmbientParticles(theme) {
+    ambientParticles = Array.from({ length: ambientParticleTargetCount(theme) }, () => buildAmbientParticle(theme));
+  }
+
+  function ambientParticleTargetCount(theme) {
     const cfg = THEME_AMBIENCE[theme] || THEME_AMBIENCE.meadow;
-    ambientParticles = Array.from({ length: cfg.count }, () => buildAmbientParticle(theme));
+    if (!reducedEffectsMode()) return cfg.count;
+    return Math.max(8, Math.ceil(cfg.count * 0.45));
+  }
+
+  function maxParticleCount() {
+    return reducedEffectsMode() ? 90 : 180;
+  }
+
+  function clampParticles() {
+    const maxCount = maxParticleCount();
+    if (particles.length > maxCount) particles.splice(0, particles.length - maxCount);
   }
 
   function triggerWonder(zone) {
@@ -1399,8 +1420,10 @@
   function update() {
     time += 1;
     updateMusic();
-    updateParticles();
-    updateAmbientParticles();
+    if (gameState !== 'menu' && gameState !== 'map') {
+      updateParticles();
+      updateAmbientParticles();
+    }
     if (gameState === 'map') {
       mapPulse += 0.05;
       if (mapBranchHintTimer > 0) mapBranchHintTimer--;
@@ -1845,7 +1868,8 @@
 
   function burst(x, y, count, color) {
     const colors = [color, '#79f0c3', '#ff74ba', '#fff5dc', '#71dfff', '#f7a14a'];
-    for (let i = 0; i < count; i++) {
+    const burstCount = reducedEffectsMode() ? Math.ceil(count * 0.6) : count;
+    for (let i = 0; i < burstCount; i++) {
       particles.push({
         x, y,
         vx: (Math.random() - 0.5) * 8,
@@ -1855,6 +1879,7 @@
         color: colors[(Math.random() * colors.length) | 0]
       });
     }
+    clampParticles();
   }
 
   function updateParticles() {
@@ -1865,11 +1890,13 @@
       p.life--;
     }
     for (let i = particles.length - 1; i >= 0; i--) if (particles[i].life <= 0) particles.splice(i, 1);
+    clampParticles();
   }
 
   function updateAmbientParticles() {
     if (!level) return;
-    const cfg = THEME_AMBIENCE[level.theme] || THEME_AMBIENCE.meadow;
+    const targetCount = ambientParticleTargetCount(level.theme);
+    if (ambientParticles.length > targetCount) ambientParticles.length = targetCount;
     for (let i = 0; i < ambientParticles.length; i++) {
       const p = ambientParticles[i];
       p.x += p.vx;
@@ -1881,7 +1908,7 @@
         ambientParticles[i].y = Math.random() * H;
       }
     }
-    while (ambientParticles.length < cfg.count) ambientParticles.push(buildAmbientParticle(level.theme));
+    while (ambientParticles.length < targetCount) ambientParticles.push(buildAmbientParticle(level.theme));
   }
 
   function draw() {
@@ -1891,24 +1918,29 @@
     ctx.save();
     ctx.translate(sx, sy);
 
-    drawBackground();
-    drawAmbientParticles();
-    ctx.save();
-    ctx.translate(-cameraX, 0);
-    drawDecor();
-    drawPlatforms();
-    drawSigns();
-    drawFriendlyNpcs();
-    drawCheckpoints();
-    drawGoal();
-    drawCandies();
-    drawSpecials();
-    drawEnemies();
-    drawPlayer();
-    drawParticles();
-    ctx.restore();
-    drawHUD();
-    if (gameState === 'map') drawWorldMap();
+    if (gameState === 'map') {
+      drawWorldMap();
+    } else {
+      drawBackground();
+      if (gameState !== 'menu') drawAmbientParticles();
+      ctx.save();
+      ctx.translate(-cameraX, 0);
+      if (gameState !== 'menu') {
+        drawDecor();
+        drawPlatforms();
+        drawSigns();
+        drawFriendlyNpcs();
+        drawCheckpoints();
+        drawGoal();
+        drawCandies();
+        drawSpecials();
+        drawEnemies();
+        drawPlayer();
+        drawParticles();
+      }
+      ctx.restore();
+      drawHUD();
+    }
     if (levelIntroTimer > 0 && gameState === 'playing' && winTimer === 0) drawLevelIntro();
     if (storyTimer > 0 && gameState === 'playing' && winTimer === 0) drawStoryBanner();
     if (wonderTextTimer > 0 && gameState === 'playing' && winTimer === 0) drawWonderBanner();
@@ -1938,7 +1970,8 @@
 
     ctx.globalAlpha = 0.08;
     ctx.fillStyle = theme.haze;
-    for (let i = 0; i < 4; i++) {
+    const hazeCount = reducedEffectsMode() ? 2 : 4;
+    for (let i = 0; i < hazeCount; i++) {
       const x = ((i * 420 - time * 0.14) % (W + 520)) - 140;
       ctx.beginPath();
       ctx.ellipse(x, 88 + (i % 2) * 36, 74, 24, 0, 0, Math.PI * 2);
@@ -1949,7 +1982,8 @@
     ctx.save();
     ctx.globalAlpha = 0.08;
     ctx.fillStyle = '#fffaf1';
-    for (let i = 0; i < 3; i++) {
+    const lightBandCount = reducedEffectsMode() ? 1 : 3;
+    for (let i = 0; i < lightBandCount; i++) {
       const x = ((i * 310 + time * 0.22) % (W + 240)) - 120;
       ctx.fillRect(x, 0, 46, H);
     }
@@ -1999,9 +2033,9 @@
       ctx.translate(0, bob);
       if (sway !== 0) ctx.rotate((sway * Math.PI) / 720);
       if (d.tint) {
-        ctx.filter = `drop-shadow(0 0 10px ${d.tint})`;
+        ctx.filter = renderFilter(`drop-shadow(0 0 10px ${d.tint})`);
       } else if (d.img.includes('arch')) {
-        ctx.filter = 'drop-shadow(0 0 10px rgba(255,255,255,0.25))';
+        ctx.filter = renderFilter('drop-shadow(0 0 10px rgba(255,255,255,0.25))');
       }
       drawImageBottom(img, d.x, d.y, d.h || 72, d.w, d.flip || 1);
       if (d.img.includes('arch') && Math.sin(time * 0.06 + d.x * 0.03) > 0.68) {
@@ -2036,7 +2070,7 @@
       const frame = assets[npc.frame];
       if (!frame) continue;
       ctx.save();
-      ctx.filter = 'drop-shadow(0 0 8px rgba(255,248,239,0.65))';
+      ctx.filter = renderFilter('drop-shadow(0 0 8px rgba(255,248,239,0.65))');
       drawImageBottom(frame, npc.x, npc.y + bob, 42, 42, 1);
       if (npc.text) {
         roundRect(npc.x - 10, npc.y - 34 + bob, 122, 24, 10, 'rgba(255,248,239,0.88)', 'rgba(255,255,255,0.65)');
@@ -2156,7 +2190,7 @@
   function drawThemedPlatformSprite(img, p, drawY, h, style) {
     roundRect(p.x - 3, drawY - 3, p.w + 6, Math.max(16, p.h + 8), 7, style.glow, style.stroke);
     ctx.save();
-    ctx.filter = style.filter;
+    ctx.filter = renderFilter(style.filter);
     drawImageBottom(img, p.x, drawY + p.h + 12, h, p.w);
     ctx.restore();
     drawPlatformAccent(p, currentPlatformTheme(), drawY, style);
@@ -2199,7 +2233,7 @@
     const style = platformThemeStyle(theme, p.kind);
     ctx.save();
     ctx.globalAlpha = openAlpha;
-    ctx.filter = style.filter;
+    ctx.filter = renderFilter(style.filter);
     drawImageBottom(assets.gate_intact, p.x, p.y + p.h, p.h + 18, p.w);
     if (assets.gate_post && p.w >= 56) {
       drawImageBottom(assets.gate_post, p.x - 8, p.y + p.h, p.h + 8, 16);
@@ -2294,7 +2328,7 @@
       const drawH = e.giant ? 78 : e.kind === 'jaw' ? 44 : e.kind === 'beetle' ? 42 : 48;
       const drawW = e.giant ? 78 : e.kind === 'jaw' ? 44 : 46;
       ctx.save();
-      if (e.alert && !e.giant) ctx.filter = 'drop-shadow(0 0 8px rgba(255,245,220,0.8))';
+      if (e.alert && !e.giant) ctx.filter = renderFilter('drop-shadow(0 0 8px rgba(255,245,220,0.8))');
       drawImageBottom(assets[frame], e.x - (e.giant ? 12 : 6), y + (e.giant ? 10 : 8), drawH, drawW, e.vx < 0 ? -1 : 1);
       if (e.alert && !e.giant) {
         ctx.globalAlpha = 0.45 + Math.sin(time * 0.25) * 0.15;
@@ -2337,14 +2371,14 @@
     if (sugarTimer > 0) {
       ctx.save();
       ctx.globalAlpha = 0.55 + Math.sin(time * 0.3) * 0.15;
-      ctx.filter = 'drop-shadow(0 0 18px rgba(255, 239, 120, 0.95))';
+      ctx.filter = renderFilter('drop-shadow(0 0 18px rgba(255, 239, 120, 0.95))');
       drawImageBottom(frame, player.x - 8, player.y + player.h + 6, heroHeight, undefined, player.face > 0 ? 1 : -1);
       ctx.restore();
     }
     if (flair) {
       ctx.save();
       ctx.globalAlpha = 0.24 + Math.sin(time * 0.18) * 0.08;
-      ctx.filter = 'drop-shadow(0 0 12px rgba(255,242,122,0.95))';
+      ctx.filter = renderFilter('drop-shadow(0 0 12px rgba(255,242,122,0.95))');
       drawImageBottom(frame, player.x - 8, player.y + player.h + 6, heroHeight + 2, undefined, player.face > 0 ? 1 : -1);
       ctx.restore();
     }
@@ -2385,11 +2419,36 @@
     ctx.globalAlpha = 1;
   }
 
-  function isMobileCanvas() {
+  function refreshCanvasProfile() {
     const coarse = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
     const stage = canvas.parentElement;
     const rect = stage ? stage.getBoundingClientRect() : { width: window.innerWidth, height: window.innerHeight };
-    return coarse || rect.width < 1180 || rect.height < 620 || Math.min(window.innerWidth, window.innerHeight) < 760;
+    const minViewport = Math.min(window.innerWidth, window.innerHeight);
+    compactCanvasCached = coarse || rect.width < 1180 || rect.height < 620 || minViewport < 760;
+    coarsePointerCached = coarse;
+    tabletCanvasCached = compactCanvasCached && minViewport >= 760;
+    reducedEffectsActive = compactCanvasCached;
+    canvasProfileReady = true;
+  }
+
+  function isMobileCanvas() {
+    if (!canvasProfileReady) refreshCanvasProfile();
+    return compactCanvasCached;
+  }
+
+  function reducedEffectsMode() {
+    if (!canvasProfileReady) refreshCanvasProfile();
+    return reducedEffectsActive;
+  }
+
+  function renderFilter(filterValue) {
+    return reducedEffectsMode() ? 'none' : filterValue;
+  }
+
+  function updateText(element, key, value) {
+    if (hudCache[key] === value) return;
+    hudCache[key] = value;
+    element.textContent = value;
   }
 
   function updateDomHud() {
@@ -2399,19 +2458,26 @@
     const levelSpecialFound = collectedSpecialCount(levelIndex);
     const sideStage = isBranchStageIndex(levelIndex);
     const hiddenBonus = isHiddenBonusStageIndex(levelIndex);
-    hudLevelName.textContent = level.name;
-    hudLevelValue.textContent = hiddenBonus ? 'Bonus' : sideStage ? 'Side' : `${levelIndex + 1}/${MAIN_LEVEL_COUNT}`;
-    hudCandyValue.textContent = String(score);
-    hudTotalValue.textContent = String(totalCandy + score);
-    hudHeartsValue.textContent = `${Math.max(0, player.hearts)}/${maxHearts}`;
-    hudLivesValue.textContent = String(lives);
-    hudTimeValue.textContent = formatLevelTimer(levelTimer);
-    hudSpecialsValue.textContent = levelSpecialTotal > 0 ? `${levelSpecialFound}/${levelSpecialTotal}` : '—';
-    hudTipText.textContent = level.tip;
-    hudLifeText.textContent = `Next extra life at ${nextExtraLifeAt} total candy`;
-    hudChapterText.textContent = level.chapter;
-    hudSugarFill.style.width = `${Math.max(0, Math.min(100, sugarTimer > 0 ? 100 : sugar))}%`;
-    canvas.parentElement.classList.toggle('hud-hidden', !showHud);
+    updateText(hudLevelName, 'levelName', level.name);
+    updateText(hudLevelValue, 'levelValue', hiddenBonus ? 'Bonus' : sideStage ? 'Side' : `${levelIndex + 1}/${MAIN_LEVEL_COUNT}`);
+    updateText(hudCandyValue, 'candy', String(score));
+    updateText(hudTotalValue, 'totalCandy', String(totalCandy + score));
+    updateText(hudHeartsValue, 'hearts', `${Math.max(0, player.hearts)}/${maxHearts}`);
+    updateText(hudLivesValue, 'lives', String(lives));
+    updateText(hudTimeValue, 'time', formatLevelTimer(levelTimer));
+    updateText(hudSpecialsValue, 'specials', levelSpecialTotal > 0 ? `${levelSpecialFound}/${levelSpecialTotal}` : '—');
+    updateText(hudTipText, 'tip', level.tip);
+    updateText(hudLifeText, 'lifeText', `Next extra life at ${nextExtraLifeAt} total candy`);
+    updateText(hudChapterText, 'chapter', level.chapter);
+    const sugarWidth = `${Math.max(0, Math.min(100, sugarTimer > 0 ? 100 : sugar))}%`;
+    if (hudCache.sugarWidth !== sugarWidth) {
+      hudCache.sugarWidth = sugarWidth;
+      hudSugarFill.style.width = sugarWidth;
+    }
+    if (hudCache.showHud !== showHud) {
+      hudCache.showHud = showHud;
+      canvas.parentElement.classList.toggle('hud-hidden', !showHud);
+    }
   }
 
   function drawHUD() {
@@ -2486,6 +2552,7 @@
 
   function drawWorldMap() {
     const compact = isMobileCanvas();
+    const reduced = reducedEffectsMode();
     const reveal = mapRevealTimer > 0 ? 1 - (mapRevealTimer / 42) : 1;
     const globalAllSpecials = allSpecialsComplete();
     const worldMap = currentWorldMapData();
@@ -2766,8 +2833,9 @@
     drawImageBottom(assets[currentMapHeroFrame()], markerX - (compact ? 18 : 20), markerY + (compact ? 18 : 22), compact ? 42 : 46, undefined, markerFlip);
     if (mapArrivalTimer > 0) {
       const sparkleAlpha = mapArrivalTimer / 24;
-      for (let i = 0; i < 7; i++) {
-        const angle = (Math.PI * 2 * i) / 7 + mapPulse * 1.2;
+      const sparkleCount = reduced ? 4 : 7;
+      for (let i = 0; i < sparkleCount; i++) {
+        const angle = (Math.PI * 2 * i) / sparkleCount + mapPulse * 1.2;
         const radius = (compact ? 14 : 18) + (1 - sparkleAlpha) * (compact ? 14 : 18);
         const sx = markerTo.x + Math.cos(angle) * radius;
         const sy = markerTo.y - 6 + Math.sin(angle) * radius;
