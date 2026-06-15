@@ -638,6 +638,7 @@
   const jumpPower = -16.1;
   const coyoteFrames = 12;
   const bufferFrames = 12;
+  const spawnGraceFrames = 45;
 
   let level = null;
   let levelDecor = [];
@@ -664,6 +665,7 @@
   let wonderTextTimer = 0;
   let runTookDamage = false;
   let lastStageRewards = [];
+  let respawnGraceTimer = 0;
 
   function levelSpecialCount(i) {
     return (LEVELS[i] && LEVELS[i].specials ? LEVELS[i].specials.length : 0);
@@ -1200,7 +1202,8 @@
       invuln: 0, landedTimer: 0, hurtTimer: 0, hearts: maxHearts,
       lastSafe: { x: level.start.x, y: level.start.y }
     });
-    snapSpawnToGround();
+    respawnGraceTimer = 0;
+    placePlayerAtSafeSpawn(level.start, { fallback: level.start, graceFrames: spawnGraceFrames });
     cameraX = 0;
     score = 0;
     sugar = 0;
@@ -1248,6 +1251,98 @@
     return ['icing', 'choco', 'wafer', 'float', 'elevator', 'slide', 'raft'].includes(p.kind);
   }
 
+  function clampValue(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function isSpawnSupportPlatform(p) {
+    return p.alive && !['sugarGate', 'blinkGate', 'break', 'bounce'].includes(p.kind);
+  }
+
+  function spawnPointOnPlatform(point, platform) {
+    const minX = platform.x + 8;
+    const maxX = platform.x + platform.w - player.w - 8;
+    const desiredX = point.x ?? platform.x;
+    const x = maxX >= minX
+      ? clampValue(desiredX, minX, maxX)
+      : platform.x + platform.w / 2 - player.w / 2;
+    return {
+      x: clampValue(x, 0, WORLD_W - player.w),
+      y: platform.y - player.h,
+      platform
+    };
+  }
+
+  function findSafeSpawnPosition(point, horizontalPadding = 44, verticalAbove = 120, verticalBelow = 240) {
+    if (!point) return null;
+    const desiredCenterX = point.x + player.w / 2;
+    let best = null;
+    let bestScore = Infinity;
+    for (const p of platforms) {
+      if (!isSpawnSupportPlatform(p)) continue;
+      const top = p.y - player.h;
+      const nearX = desiredCenterX >= p.x - horizontalPadding && desiredCenterX <= p.x + p.w + horizontalPadding;
+      const nearY = top >= point.y - verticalAbove && top <= point.y + verticalBelow;
+      if (!nearX || !nearY) continue;
+      const platformCenterX = clampValue(desiredCenterX, p.x + 8, p.x + p.w - 8);
+      const xDistance = Math.abs(desiredCenterX - platformCenterX);
+      const yDistance = Math.abs(top - point.y);
+      const safeBonus = isSafePlatform(p) ? -18 : 0;
+      const movingPenalty = ['float', 'elevator', 'moving', 'raft'].includes(p.kind) ? 4 : 0;
+      const cookiePenalty = p.kind === 'cookie' ? 28 : 0;
+      const score = yDistance * 2 + xDistance + movingPenalty + cookiePenalty + safeBonus;
+      if (score < bestScore) {
+        bestScore = score;
+        best = spawnPointOnPlatform(point, p);
+      }
+    }
+    return best;
+  }
+
+  function findFallbackSpawnPosition(point) {
+    let best = null;
+    let bestScore = Infinity;
+    for (const p of platforms) {
+      if (!isSpawnSupportPlatform(p) || p.kind === 'cookie') continue;
+      const top = p.y - player.h;
+      const score = Math.abs((point?.x || 0) - p.x) + Math.abs((point?.y || 0) - top);
+      if (score < bestScore) {
+        bestScore = score;
+        best = spawnPointOnPlatform(point || level.start, p);
+      }
+    }
+    return best;
+  }
+
+  function resolveSafeSpawnPosition(point, fallback = level?.start) {
+    return findSafeSpawnPosition(point)
+      || findSafeSpawnPosition(point, 96, 180, 320)
+      || findSafeSpawnPosition(fallback)
+      || findSafeSpawnPosition(fallback, 96, 180, 320)
+      || findFallbackSpawnPosition(fallback)
+      || {
+        x: clampValue((fallback || point || { x: 70 }).x, 0, WORLD_W - player.w),
+        y: clampValue((fallback || point || { y: 390 }).y, 0, H - player.h - 8),
+        platform: null
+      };
+  }
+
+  function placePlayerAtSafeSpawn(point, options = {}) {
+    const safe = resolveSafeSpawnPosition(point, options.fallback || level?.start);
+    player.x = safe.x;
+    player.y = safe.y;
+    player.vx = 0;
+    player.vy = 0;
+    player.onGround = !!safe.platform;
+    player.surfaceKind = safe.platform ? safe.platform.kind : null;
+    player.coyote = safe.platform ? coyoteFrames : 0;
+    player.jumpBuffer = 0;
+    if (options.updateLastSafe !== false) player.lastSafe = { x: player.x, y: player.y };
+    if (options.graceFrames) respawnGraceTimer = Math.max(respawnGraceTimer, options.graceFrames);
+    if (options.invulnFrames) player.invuln = Math.max(player.invuln, options.invulnFrames);
+    return safe;
+  }
+
   function enemyHasGroundAhead(enemy) {
     const probeX = enemy.vx >= 0 ? enemy.x + enemy.w + 6 : enemy.x - 6;
     const probeY = enemy.y + enemy.h + 8;
@@ -1280,24 +1375,7 @@
   }
 
   function snapSpawnToGround() {
-    const feetX = player.x + player.w / 2;
-    let landingY = null;
-    for (const p of platforms) {
-      if (!p.alive || p.kind === 'sugarGate' || p.kind === 'break') continue;
-      const supported = feetX >= p.x + 4 && feetX <= p.x + p.w - 4;
-      if (!supported) continue;
-      const top = p.y - player.h;
-      const closeToStart = Math.abs(top - player.y) <= 18;
-      if (!closeToStart) continue;
-      if (landingY === null || top < landingY) landingY = top;
-    }
-    if (landingY !== null) {
-      player.y = landingY;
-      player.onGround = true;
-      player.vy = 0;
-      player.coyote = coyoteFrames;
-      player.lastSafe = { x: player.x, y: player.y };
-    }
+    placePlayerAtSafeSpawn({ x: player.x, y: player.y }, { fallback: level?.start, updateLastSafe: true });
   }
 
   function update() {
@@ -1658,8 +1736,12 @@
     for (const cp of checkpoints) {
       const pad = { x: cp.x, y: cp.y, w: 46, h: 46 };
       if (!cp.active && rectsOverlap(player, pad)) {
+        const safeCheckpoint = resolveSafeSpawnPosition({ x: player.x, y: player.y }, level.start);
+        const safeStart = resolveSafeSpawnPosition(level.start, level.start);
         cp.active = true;
-        player.lastSafe = { x: player.x, y: player.y };
+        player.lastSafe = safeCheckpoint.platform
+          ? { x: safeCheckpoint.x, y: safeCheckpoint.y }
+          : { x: safeStart.x, y: safeStart.y };
         player.hearts = Math.min(maxHearts, player.hearts + 1);
         burst(cp.x + 22, cp.y + 12, 14, '#fff27a');
         sound('checkpoint');
@@ -1674,9 +1756,10 @@
       chordWin();
     }
 
-    if (player.y > H + 120) loseLife('fall');
+    if (player.y > H + 120 && respawnGraceTimer <= 0) loseLife('fall');
 
     if (player.invuln > 0) player.invuln--;
+    if (respawnGraceTimer > 0) respawnGraceTimer--;
     if (player.landedTimer > 0) player.landedTimer--;
     if (player.hurtTimer > 0) player.hurtTimer--;
     if (levelIntroTimer > 0) levelIntroTimer--;
@@ -1728,17 +1811,15 @@
   function respawn() {
     levelTimer = levelTimeLimit;
     footstepCooldown = 0;
-    player.x = player.lastSafe.x;
-    player.y = player.lastSafe.y;
-    player.vx = 0;
-    player.vy = 0;
-    player.onGround = false;
-    snapSpawnToGround();
-    player.invuln = 132;
+    placePlayerAtSafeSpawn(player.lastSafe, {
+      fallback: level.start,
+      graceFrames: spawnGraceFrames,
+      invulnFrames: 132
+    });
     player.hurtTimer = 0;
     player.hearts = maxHearts;
     sugar = Math.max(0, sugar - 20);
-    burst(player.x + player.w / 2, H - 10, 14, '#71dfff');
+    burst(player.x + player.w / 2, player.y + player.h, 14, '#71dfff');
   }
 
   function burst(x, y, count, color) {
