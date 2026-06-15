@@ -1260,8 +1260,9 @@
   }
 
   function spawnPointOnPlatform(point, platform) {
-    const minX = platform.x + 8;
-    const maxX = platform.x + platform.w - player.w - 8;
+    const margin = Math.min(24, Math.max(8, platform.w * 0.18));
+    const minX = platform.x + margin;
+    const maxX = platform.x + platform.w - player.w - margin;
     const desiredX = point.x ?? platform.x;
     const x = maxX >= minX
       ? clampValue(desiredX, minX, maxX)
@@ -1271,6 +1272,15 @@
       y: platform.y - player.h,
       platform
     };
+  }
+
+  function playerSafelySupportedBy(platform) {
+    const feetLeft = player.x + 8;
+    const feetRight = player.x + player.w - 8;
+    const feetY = player.y + player.h;
+    return feetLeft >= platform.x + 10
+      && feetRight <= platform.x + platform.w - 10
+      && Math.abs(feetY - platform.y) <= 3;
   }
 
   function findSafeSpawnPosition(point, horizontalPadding = 44, verticalAbove = 120, verticalBelow = 240) {
@@ -1341,6 +1351,14 @@
     if (options.graceFrames) respawnGraceTimer = Math.max(respawnGraceTimer, options.graceFrames);
     if (options.invulnFrames) player.invuln = Math.max(player.invuln, options.invulnFrames);
     return safe;
+  }
+
+  function recoverUnsafeFallDuringGrace() {
+    placePlayerAtSafeSpawn(player.lastSafe, {
+      fallback: level.start,
+      graceFrames: spawnGraceFrames,
+      invulnFrames: 60
+    });
   }
 
   function enemyHasGroundAhead(enemy) {
@@ -1590,7 +1608,7 @@
         shake = 4;
       } else {
         player.vy = 0;
-        if (isSafePlatform(landing)) player.lastSafe = { x: player.x, y: player.y };
+        if (isSafePlatform(landing) && playerSafelySupportedBy(landing)) player.lastSafe = { x: player.x, y: player.y };
         if (landing.kind === 'moving' || landing.kind === 'raft') player.x += landing.speed * landing.dir;
         if (landing.kind === 'float' || landing.kind === 'elevator') player.y += landing.speed * landing.dir;
         if (landing.kind === 'tilt') player.vx += (player.x + player.w / 2 < landing.x + landing.w / 2 ? -0.18 : 0.18);
@@ -1756,7 +1774,10 @@
       chordWin();
     }
 
-    if (player.y > H + 120 && respawnGraceTimer <= 0) loseLife('fall');
+    if (player.y > H + 120) {
+      if (respawnGraceTimer > 0) recoverUnsafeFallDuringGrace();
+      else loseLife('fall');
+    }
 
     if (player.invuln > 0) player.invuln--;
     if (respawnGraceTimer > 0) respawnGraceTimer--;
