@@ -2158,7 +2158,17 @@
     return { glow: 'rgba(255,255,255,0.18)', stroke: 'rgba(255,255,255,0.45)', filter: 'none', accent: '#fff27a' };
   }
 
+  function platformRenderStyle(style) {
+    if (!reducedEffectsMode()) return style;
+    return {
+      ...style,
+      glow: 'rgba(255,255,255,0)',
+      stroke: 'rgba(255,255,255,0)'
+    };
+  }
+
   function drawPlatformAccent(p, theme, drawY, style) {
+    if (reducedEffectsMode()) return;
     ctx.save();
     ctx.globalAlpha = 0.58;
     ctx.strokeStyle = style.stroke;
@@ -2187,18 +2197,51 @@
     ctx.restore();
   }
 
-  function drawThemedPlatformSprite(img, p, drawY, h, style) {
-    roundRect(p.x - 3, drawY - 3, p.w + 6, Math.max(16, p.h + 8), 7, style.glow, style.stroke);
+  function reducedPlatformColors(theme, kind) {
+    if (kind === 'cookie' || kind === 'break') return { fill: '#f7c471', top: '#fff0b8', stroke: '#b8753a' };
+    if (kind === 'choco') return { fill: '#8f5a40', top: '#d6a36a', stroke: '#5a2e20' };
+    if (kind === 'wafer' || kind === 'tilt') return { fill: '#d9a24f', top: '#ffe0a4', stroke: '#916033' };
+    if (kind === 'syrup') return { fill: '#9b5a36', top: '#f0a15e', stroke: '#6a3824' };
+    if (theme === 'falls' || theme === 'mallows') return { fill: '#a8edff', top: '#f5fdff', stroke: '#57b8dc' };
+    if (theme === 'woods' || theme === 'jungle') return { fill: '#b7d66a', top: '#fff0a3', stroke: '#6f8f3d' };
+    if (theme === 'courtyard' || theme === 'keep' || theme === 'sky') return { fill: '#ffb7d6', top: '#fff2b8', stroke: '#c76b9b' };
+    if (theme === 'gummy') return { fill: '#ff8fc8', top: '#ffd4ea', stroke: '#c65394' };
+    return { fill: '#ff9ed0', top: '#fff1f8', stroke: '#cf5c9d' };
+  }
+
+  function drawReducedPlatformSurface(p, theme, drawY) {
+    const colors = reducedPlatformColors(theme, p.kind);
+    roundRect(p.x, drawY, p.w, Math.max(12, p.h), 6, colors.fill, colors.stroke);
     ctx.save();
-    ctx.filter = renderFilter(style.filter);
+    ctx.globalAlpha = 0.58;
+    roundRect(p.x + 4, drawY + 3, Math.max(0, p.w - 8), 4, 4, colors.top, 'rgba(255,255,255,0)');
+    ctx.restore();
+    if (p.kind === 'syrup') {
+      ctx.save();
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = '#6a3824';
+      ctx.fillRect(p.x + 8, drawY + Math.max(6, p.h - 7), Math.max(0, p.w - 16), 4);
+      ctx.restore();
+    }
+  }
+
+  function drawThemedPlatformSprite(img, p, drawY, h, style) {
+    if (reducedEffectsMode()) {
+      drawReducedPlatformSurface(p, currentPlatformTheme(), drawY);
+      return;
+    }
+    const renderStyle = platformRenderStyle(style);
+    roundRect(p.x - 3, drawY - 3, p.w + 6, Math.max(16, p.h + 8), 7, renderStyle.glow, renderStyle.stroke);
+    ctx.save();
+    ctx.filter = renderFilter(renderStyle.filter);
     drawImageBottom(img, p.x, drawY + p.h + 12, h, p.w);
     ctx.restore();
-    drawPlatformAccent(p, currentPlatformTheme(), drawY, style);
+    drawPlatformAccent(p, currentPlatformTheme(), drawY, renderStyle);
   }
 
   function drawThemedBouncePlatform(p, theme) {
     const pulse = Math.sin(time * 0.18 + p.x * 0.02) * 2;
-    const style = platformThemeStyle(theme, p.kind);
+    const style = platformRenderStyle(platformThemeStyle(theme, p.kind));
     const img = theme === 'woods' || theme === 'jungle'
       ? assets.gumdrop_green || assets.marshmallow_1
       : theme === 'courtyard' || theme === 'keep' || theme === 'sky'
@@ -2211,7 +2254,11 @@
   }
 
   function drawThemedFloatPlatform(p, theme) {
-    const style = platformThemeStyle(theme, p.kind);
+    if (reducedEffectsMode()) {
+      drawReducedPlatformSurface(p, theme, p.y);
+      return;
+    }
+    const style = platformRenderStyle(platformThemeStyle(theme, p.kind));
     const top = theme === 'meadow' || theme === 'lollipops' || theme === 'gummy'
       ? assets.candy_cane_pink || assets.candy_cane_straight || assets.lollipop_swirl
       : theme === 'falls' || theme === 'mallows'
@@ -2230,7 +2277,7 @@
   }
 
   function drawThemedGate(p, theme, openAlpha = 0.95, star = assets.star_blue) {
-    const style = platformThemeStyle(theme, p.kind);
+    const style = platformRenderStyle(platformThemeStyle(theme, p.kind));
     ctx.save();
     ctx.globalAlpha = openAlpha;
     ctx.filter = renderFilter(style.filter);
