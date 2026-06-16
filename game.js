@@ -2110,11 +2110,30 @@
 
   function themedPlatformImage(p, theme) {
     const baseImg = basePlatformImage(p);
-    if (theme === 'meadow' || theme === 'lollipops' || theme === 'gummy') {
+    if (theme === 'gummy') {
+      if (p.kind === 'icing') return p.w > 180 ? assets.gumdrops_decor || assets.icing_strip || baseImg : assets.gumdrop_pink || assets.jelly_pink || baseImg;
+      if (p.kind === 'cookie' || p.kind === 'break') {
+        if (p.hit || p.crumbleTimer > 0) return assets.gumdrop_purple || assets.jelly_pink || assets.wafer_broken || baseImg;
+        return p.w > 150 ? assets.gumdrops_decor || assets.icing_strip || baseImg : assets.gumdrop_blue || assets.gumdrop_pink || baseImg;
+      }
+      if (p.kind === 'moving') return assets.jelly_green || assets.gumdrop_green || assets.wafer_moving || baseImg;
+      if (p.kind === 'float') return assets.gumdrops_decor || assets.gumdrop_pink || assets.jelly_pink || baseImg;
+    }
+    if (theme === 'meadow') {
+      if (p.kind === 'icing') return p.w > 180 ? assets.icing_strip || assets.icing_long || assets.frosting_ground || baseImg : assets.icing_block2 || assets.icing_block || baseImg;
+      if (p.kind === 'cookie') {
+        if (p.crumbleTimer > 0) return assets.wafer_broken || assets.icing_block2 || assets.wafer_platform || baseImg;
+        return p.w > 150 ? assets.wafer_platform || assets.icing_strip || baseImg : assets.icing_block2 || assets.wafer_platform || baseImg;
+      }
+      if (p.kind === 'moving') return assets.icing_strip || assets.wafer_moving || baseImg;
+      if (p.kind === 'float') return assets.icing_strip || assets.wafer_platform || assets.gumdrop_pink || baseImg;
+      if (p.kind === 'break') return p.hit ? assets.wafer_broken || assets.icing_block2 || baseImg : assets.icing_block2 || assets.wafer_block3 || baseImg;
+    }
+    if (theme === 'lollipops') {
       if (p.kind === 'icing') return p.w > 180 ? assets.candy_cane_straight || assets.icing_strip || baseImg : assets.lollipop_green || baseImg;
-      if (p.kind === 'cookie') return p.crumbleTimer > 0 ? baseImg : assets.candy_cane_pink || assets.lollipop_swirl || baseImg;
+      if (p.kind === 'cookie') return p.crumbleTimer > 0 ? assets.wafer_broken || assets.icing_block2 || baseImg : assets.candy_cane_pink || assets.lollipop_swirl || baseImg;
       if (p.kind === 'moving') return assets.rod_pink || assets.wafer_moving || baseImg;
-      if (p.kind === 'break') return p.hit ? assets.cookie_cracked_2 : assets.lollipop_orange || baseImg;
+      if (p.kind === 'break') return p.hit ? assets.wafer_broken || assets.icing_block2 || baseImg : assets.lollipop_orange || baseImg;
     }
     if (theme === 'falls' || theme === 'mallows') {
       if (p.kind === 'icing' || p.kind === 'slide') return p.w > 170 ? assets.icing_strip || assets.icing_long || baseImg : assets.icing_block2 || baseImg;
@@ -2140,7 +2159,13 @@
   }
 
   function platformThemeStyle(theme, kind) {
-    if (theme === 'meadow' || theme === 'lollipops' || theme === 'gummy') {
+    if (theme === 'gummy') {
+      return { glow: 'rgba(255,141,197,0.22)', stroke: 'rgba(255,229,245,0.58)', filter: kind === 'break' ? 'none' : 'saturate(1.1) brightness(1.04)', accent: '#ff8dc5' };
+    }
+    if (theme === 'meadow') {
+      return { glow: 'rgba(255,190,220,0.18)', stroke: 'rgba(255,248,255,0.52)', filter: kind === 'break' ? 'none' : 'saturate(1.04) brightness(1.04)', accent: '#ff9ed0' };
+    }
+    if (theme === 'lollipops') {
       return { glow: 'rgba(255,158,208,0.22)', stroke: 'rgba(255,255,255,0.58)', filter: kind === 'break' ? 'none' : 'saturate(1.12) brightness(1.04)', accent: '#ff74ba' };
     }
     if (theme === 'falls' || theme === 'mallows') {
@@ -2178,8 +2203,17 @@
     ctx.lineTo(p.x + p.w - 8, drawY + 4);
     ctx.stroke();
 
-    if (theme === 'meadow' || theme === 'lollipops' || theme === 'gummy') {
-      const icon = theme === 'gummy' ? assets.gumdrop_pink : assets.lollipop_swirl;
+    if (theme === 'gummy') {
+      const icon = assets.gumdrop_pink || assets.jelly_pink;
+      if (icon && p.w >= 84) drawImageCentered(icon, p.x + p.w / 2, drawY + 1, 18);
+    } else if (theme === 'meadow') {
+      ctx.fillStyle = 'rgba(255,158,208,0.45)';
+      ctx.beginPath();
+      ctx.arc(p.x + p.w * 0.35, drawY + 3, 3, 0, Math.PI * 2);
+      ctx.arc(p.x + p.w * 0.65, drawY + 3, 3, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (theme === 'lollipops') {
+      const icon = assets.lollipop_swirl;
       if (icon && p.w >= 84) drawImageCentered(icon, p.x + p.w / 2, drawY + 1, 18);
     } else if (theme === 'falls' || theme === 'mallows') {
       ctx.fillStyle = 'rgba(255,255,255,0.72)';
@@ -2198,6 +2232,9 @@
   }
 
   function reducedPlatformColors(theme, kind) {
+    if (theme === 'gummy') return { fill: kind === 'float' ? '#8de4ff' : '#ff8fc8', top: '#ffd4ea', stroke: '#c65394' };
+    if (theme === 'meadow') return { fill: kind === 'float' ? '#ffc7e3' : '#ffb7d6', top: '#fff4fb', stroke: '#cf73a8' };
+    if (theme === 'lollipops') return { fill: '#ff9ed0', top: '#fff1f8', stroke: '#cf5c9d' };
     if (kind === 'cookie' || kind === 'break') return { fill: '#f7c471', top: '#fff0b8', stroke: '#b8753a' };
     if (kind === 'choco') return { fill: '#8f5a40', top: '#d6a36a', stroke: '#5a2e20' };
     if (kind === 'wafer' || kind === 'tilt') return { fill: '#d9a24f', top: '#ffe0a4', stroke: '#916033' };
@@ -2205,7 +2242,6 @@
     if (theme === 'falls' || theme === 'mallows') return { fill: '#a8edff', top: '#f5fdff', stroke: '#57b8dc' };
     if (theme === 'woods' || theme === 'jungle') return { fill: '#b7d66a', top: '#fff0a3', stroke: '#6f8f3d' };
     if (theme === 'courtyard' || theme === 'keep' || theme === 'sky') return { fill: '#ffb7d6', top: '#fff2b8', stroke: '#c76b9b' };
-    if (theme === 'gummy') return { fill: '#ff8fc8', top: '#ffd4ea', stroke: '#c65394' };
     return { fill: '#ff9ed0', top: '#fff1f8', stroke: '#cf5c9d' };
   }
 
@@ -2259,18 +2295,26 @@
       return;
     }
     const style = platformRenderStyle(platformThemeStyle(theme, p.kind));
-    const top = theme === 'meadow' || theme === 'lollipops' || theme === 'gummy'
-      ? assets.candy_cane_pink || assets.candy_cane_straight || assets.lollipop_swirl
-      : theme === 'falls' || theme === 'mallows'
-        ? assets.marshmallow_2 || assets.icing_strip
+    const top = theme === 'gummy'
+      ? assets.gumdrops_decor || assets.gumdrop_pink || assets.jelly_pink
+      : theme === 'meadow'
+        ? assets.icing_strip || assets.wafer_platform || assets.gumdrop_pink
+        : theme === 'lollipops'
+          ? assets.candy_cane_pink || assets.candy_cane_straight || assets.lollipop_swirl
+          : theme === 'falls' || theme === 'mallows'
+            ? assets.marshmallow_2 || assets.icing_strip
+            : theme === 'woods' || theme === 'jungle'
+              ? assets.wafer_platform || assets.wafer_long
+              : assets.cake_disc_2 || assets.frosting_ground || assets.icing_block;
+    const stem = theme === 'gummy'
+      ? assets.jelly_green || assets.gumdrop_green
+      : theme === 'meadow'
+        ? assets.frosting_column || assets.wafer_pole || assets.jelly_pink
         : theme === 'woods' || theme === 'jungle'
-          ? assets.wafer_platform || assets.wafer_long
-          : assets.cake_disc_2 || assets.frosting_ground || assets.icing_block;
-    const stem = theme === 'woods' || theme === 'jungle'
-      ? assets.wafer_pole || assets.lollipop_green
-      : theme === 'courtyard' || theme === 'keep' || theme === 'sky'
-        ? assets.frosting_column || assets.gate_post || assets.lollipop_green
-        : assets.lollipop_pink || assets.lollipop_green;
+          ? assets.wafer_pole || assets.lollipop_green
+          : theme === 'courtyard' || theme === 'keep' || theme === 'sky'
+            ? assets.frosting_column || assets.gate_post || assets.lollipop_green
+            : assets.lollipop_pink || assets.lollipop_green;
     roundRect(p.x - 4, p.y + 1, p.w + 8, p.h + 11, 8, style.glow, style.stroke);
     if (stem) drawImageBottom(stem, p.x + p.w / 2 - 20, p.y + p.h + 22, 54, 40);
     if (top) drawImageBottom(top, p.x, p.y + p.h + 10, 34, p.w);
