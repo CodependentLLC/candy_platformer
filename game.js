@@ -2262,12 +2262,14 @@
   }
 
   function drawThemedPlatformSprite(img, p, drawY, h, style) {
-    if (reducedEffectsMode()) {
+    if (!drawableImage(img)) {
       drawReducedPlatformSurface(p, currentPlatformTheme(), drawY);
       return;
     }
     const renderStyle = platformRenderStyle(style);
-    roundRect(p.x - 3, drawY - 3, p.w + 6, Math.max(16, p.h + 8), 7, renderStyle.glow, renderStyle.stroke);
+    if (!reducedEffectsMode()) {
+      roundRect(p.x - 3, drawY - 3, p.w + 6, Math.max(16, p.h + 8), 7, renderStyle.glow, renderStyle.stroke);
+    }
     ctx.save();
     ctx.filter = renderFilter(renderStyle.filter);
     drawImageBottom(img, p.x, drawY + p.h + 12, h, p.w);
@@ -2278,7 +2280,9 @@
   function drawThemedBouncePlatform(p, theme) {
     const pulse = Math.sin(time * 0.18 + p.x * 0.02) * 2;
     const style = platformRenderStyle(platformThemeStyle(theme, p.kind));
-    const img = theme === 'woods' || theme === 'jungle'
+    const img = theme === 'gummy'
+      ? assets.gumdrop_pink || assets.jelly_pink || assets.marshmallow_1
+      : theme === 'woods' || theme === 'jungle'
       ? assets.gumdrop_green || assets.marshmallow_1
       : theme === 'courtyard' || theme === 'keep' || theme === 'sky'
         ? assets.cake_disc_3 || assets.marshmallow_1
@@ -2290,10 +2294,32 @@
   }
 
   function drawThemedFloatPlatform(p, theme) {
-    if (reducedEffectsMode()) {
+    const style = platformRenderStyle(platformThemeStyle(theme, p.kind));
+    const top = theme === 'gummy'
+      ? assets.gumdrops_decor || assets.gumdrop_pink || assets.jelly_pink
+      : theme === 'meadow' || theme === 'lollipops'
+        ? assets.candy_cane_pink || assets.candy_cane_straight || assets.lollipop_swirl
+        : theme === 'falls' || theme === 'mallows'
+          ? assets.marshmallow_2 || assets.icing_strip
+          : theme === 'woods' || theme === 'jungle'
+            ? assets.wafer_platform || assets.wafer_long
+            : assets.cake_disc_2 || assets.frosting_ground || assets.icing_block;
+    const stem = theme === 'gummy'
+      ? assets.jelly_green || assets.gumdrop_green
+      : theme === 'woods' || theme === 'jungle'
+        ? assets.wafer_pole || assets.lollipop_green
+        : theme === 'courtyard' || theme === 'keep' || theme === 'sky'
+          ? assets.frosting_column || assets.gate_post || assets.lollipop_green
+          : assets.lollipop_pink || assets.lollipop_green;
+    if (!drawableImage(top)) {
       drawReducedPlatformSurface(p, theme, p.y);
       return;
     }
+<<<<<<< HEAD
+    if (!reducedEffectsMode()) {
+      roundRect(p.x - 4, p.y + 1, p.w + 8, p.h + 11, 8, style.glow, style.stroke);
+    }
+=======
     const style = platformRenderStyle(platformThemeStyle(theme, p.kind));
     const top = theme === 'gummy'
       ? assets.gumdrops_decor || assets.gumdrop_pink || assets.jelly_pink
@@ -2316,8 +2342,9 @@
             ? assets.frosting_column || assets.gate_post || assets.lollipop_green
             : assets.lollipop_pink || assets.lollipop_green;
     roundRect(p.x - 4, p.y + 1, p.w + 8, p.h + 11, 8, style.glow, style.stroke);
+>>>>>>> main
     if (stem) drawImageBottom(stem, p.x + p.w / 2 - 20, p.y + p.h + 22, 54, 40);
-    if (top) drawImageBottom(top, p.x, p.y + p.h + 10, 34, p.w);
+    drawImageBottom(top, p.x, p.y + p.h + 10, 34, p.w);
   }
 
   function drawThemedGate(p, theme, openAlpha = 0.95, star = assets.star_blue) {
