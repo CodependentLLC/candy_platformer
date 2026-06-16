@@ -29,12 +29,27 @@
   const MAP_NODE_BRANCH_OFFSET = 100;
   const MAP_NODE_BONUS = 200;
 
+  const WORLD_1_ROUTE_NODE_IDS = [
+    0,
+    1,
+    2,
+    3,
+    MAP_NODE_BRANCH_OFFSET + 2,
+    4,
+    5,
+    MAP_NODE_BRANCH_OFFSET + 3,
+    6,
+    MAP_NODE_BRANCH_OFFSET + 4,
+    7
+  ];
+
   const WORLD_MAPS = {
     'world-1-map': {
       mapId: 'world-1-map',
       mainNodes: WORLD_MAP_NODES,
       branchNodes: WORLD_MAP_BRANCH_NODES,
-      bonusNode: WORLD_MAP_BONUS_NODE
+      bonusNode: WORLD_MAP_BONUS_NODE,
+      routeNodeIds: WORLD_1_ROUTE_NODE_IDS
     }
   };
 
@@ -43,6 +58,7 @@
     WORLD_MAP_NODES,
     WORLD_MAP_BRANCH_NODES,
     WORLD_MAP_BONUS_NODE,
+    WORLD_1_ROUTE_NODE_IDS,
     MAP_NODE_BRANCH_OFFSET,
     MAP_NODE_BONUS
   };

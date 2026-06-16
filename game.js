@@ -855,7 +855,37 @@
     return node ? mapNodeStageIndex(node, id) : id;
   }
 
-  function selectableMapNodes() {
+  function isSelectableMapNode(id) {
+    const worldMap = currentWorldMapData();
+    const mainNodes = worldMap.mainNodes || WORLD_MAP_NODES;
+    const branchNodes = worldMap.branchNodes || WORLD_MAP_BRANCH_NODES;
+    if (isBonusNodeId(id)) return allSpecialsComplete();
+    if (isBranchNodeId(id)) {
+      const branchLevelIndex = id - MAP_NODE_BRANCH_OFFSET;
+      return branchNodes.some(branch => (
+        branch.levelIndex === branchLevelIndex
+        && branch.levelIndex <= unlockedLevel
+        && rewardRouteUnlocked(branch.levelIndex)
+      ));
+    }
+    const node = mainNodes[id];
+    return !!node && unlockedLevel >= mapNodeUnlockLevel(node, id);
+  }
+
+  function routeOrderedSelectableMapNodes() {
+    const routeNodeIds = currentWorldMapData().routeNodeIds;
+    if (!Array.isArray(routeNodeIds) || routeNodeIds.length === 0) return null;
+    const nodes = routeNodeIds.filter(isSelectableMapNode);
+    if (allSpecialsComplete()) {
+      const finalRouteNode = routeNodeIds[routeNodeIds.length - 1];
+      const finalIndex = nodes.indexOf(finalRouteNode);
+      if (finalIndex >= 0) nodes.splice(finalIndex, 0, MAP_NODE_BONUS);
+      else nodes.push(MAP_NODE_BONUS);
+    }
+    return nodes;
+  }
+
+  function legacySelectableMapNodes() {
     const nodes = [];
     WORLD_MAP_NODES.forEach((node, index) => {
       if (unlockedLevel >= mapNodeUnlockLevel(node, index)) nodes.push(index);
@@ -865,6 +895,10 @@
     }
     if (allSpecialsComplete()) nodes.push(MAP_NODE_BONUS);
     return nodes;
+  }
+
+  function selectableMapNodes() {
+    return routeOrderedSelectableMapNodes() || legacySelectableMapNodes();
   }
 
   function currentMapNodeId() {
