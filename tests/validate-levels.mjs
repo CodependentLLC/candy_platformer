@@ -231,6 +231,25 @@ function checkWorldData(stageIds, mapIds = new Set()) {
 }
 
 function checkMapData(stageIds) {
+  const combinedStages = [
+    ...(Array.isArray(LEVELS) ? LEVELS : []),
+    ...(Array.isArray(BONUS_STAGES) ? BONUS_STAGES : [])
+  ];
+
+  function checkMainMapStageReference(node, nodeLabel, index) {
+    if (node.stageId && !stageIds.has(node.stageId)) {
+      failGlobal(`${nodeLabel}: references unknown stage id "${node.stageId}".`);
+    }
+    if (node.stageIndex !== undefined) {
+      if (!Number.isInteger(node.stageIndex) || node.stageIndex < 0 || node.stageIndex >= combinedStages.length) {
+        failGlobal(`${nodeLabel}: stageIndex must reference a valid stage.`);
+      }
+      return;
+    }
+    const inferredStage = LEVELS[index];
+    if (!node.stageId && !inferredStage) failGlobal(`${nodeLabel}: has no matching main level stage.`);
+  }
+
   if (!WORLD_MAPS || typeof WORLD_MAPS !== 'object' || Array.isArray(WORLD_MAPS)) {
     failGlobal('CandyQuestMap.WORLD_MAPS must be an object keyed by map id.');
   }
@@ -266,9 +285,7 @@ function checkMapData(stageIds) {
     const branchNodes = Array.isArray(map.branchNodes) ? map.branchNodes : [];
     mainNodes.forEach((node, index) => {
       const nodeLabel = `${label} main node ${index}`;
-      const inferredStage = LEVELS[index];
-      if (node.stageId && !stageIds.has(node.stageId)) failGlobal(`${nodeLabel}: references unknown stage id "${node.stageId}".`);
-      if (!node.stageId && !inferredStage) failGlobal(`${nodeLabel}: has no matching main level stage.`);
+      checkMainMapStageReference(node, nodeLabel, index);
       for (const key of ['x', 'y', 'mobileX', 'mobileY']) checkNumber(`${nodeLabel}.${key}`, node[key]);
     });
     branchNodes.forEach((node, index) => {
@@ -292,9 +309,7 @@ function checkMapData(stageIds) {
 
   WORLD_MAP_NODES.forEach((node, index) => {
     const label = `World map main node ${index}`;
-    const inferredStage = LEVELS[index];
-    if (node.stageId && !stageIds.has(node.stageId)) failGlobal(`${label}: references unknown stage id "${node.stageId}".`);
-    if (!node.stageId && !inferredStage) failGlobal(`${label}: has no matching main level stage.`);
+    checkMainMapStageReference(node, label, index);
     for (const key of ['x', 'y', 'mobileX', 'mobileY']) checkNumber(`${label}.${key}`, node[key]);
     if (!isNumber(node.mobileLabelDy)) warnGlobal(`${label}: missing numeric mobileLabelDy.`);
   });

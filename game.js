@@ -2315,34 +2315,9 @@
       drawReducedPlatformSurface(p, theme, p.y);
       return;
     }
-<<<<<<< HEAD
     if (!reducedEffectsMode()) {
       roundRect(p.x - 4, p.y + 1, p.w + 8, p.h + 11, 8, style.glow, style.stroke);
     }
-=======
-    const style = platformRenderStyle(platformThemeStyle(theme, p.kind));
-    const top = theme === 'gummy'
-      ? assets.gumdrops_decor || assets.gumdrop_pink || assets.jelly_pink
-      : theme === 'meadow'
-        ? assets.icing_strip || assets.wafer_platform || assets.gumdrop_pink
-        : theme === 'lollipops'
-          ? assets.candy_cane_pink || assets.candy_cane_straight || assets.lollipop_swirl
-          : theme === 'falls' || theme === 'mallows'
-            ? assets.marshmallow_2 || assets.icing_strip
-            : theme === 'woods' || theme === 'jungle'
-              ? assets.wafer_platform || assets.wafer_long
-              : assets.cake_disc_2 || assets.frosting_ground || assets.icing_block;
-    const stem = theme === 'gummy'
-      ? assets.jelly_green || assets.gumdrop_green
-      : theme === 'meadow'
-        ? assets.frosting_column || assets.wafer_pole || assets.jelly_pink
-        : theme === 'woods' || theme === 'jungle'
-          ? assets.wafer_pole || assets.lollipop_green
-          : theme === 'courtyard' || theme === 'keep' || theme === 'sky'
-            ? assets.frosting_column || assets.gate_post || assets.lollipop_green
-            : assets.lollipop_pink || assets.lollipop_green;
-    roundRect(p.x - 4, p.y + 1, p.w + 8, p.h + 11, 8, style.glow, style.stroke);
->>>>>>> main
     if (stem) drawImageBottom(stem, p.x + p.w / 2 - 20, p.y + p.h + 22, 54, 40);
     drawImageBottom(top, p.x, p.y + p.h + 10, 34, p.w);
   }
