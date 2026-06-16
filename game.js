@@ -2110,7 +2110,17 @@
 
   function themedPlatformImage(p, theme) {
     const baseImg = basePlatformImage(p);
-    if (theme === 'meadow' || theme === 'lollipops' || theme === 'gummy') {
+    if (theme === 'gummy') {
+      if (p.kind === 'icing') return p.w > 180 ? assets.gumdrops_decor || assets.icing_strip || baseImg : assets.gumdrop_pink || assets.jelly_pink || baseImg;
+      if (p.kind === 'cookie' || p.kind === 'break') {
+        if (p.hit || p.crumbleTimer > 0) return assets.gumdrop_purple || assets.jelly_pink || assets.wafer_broken || baseImg;
+        return p.w > 150 ? assets.gumdrops_decor || assets.icing_strip || baseImg : assets.gumdrop_blue || assets.gumdrop_pink || baseImg;
+      }
+      if (p.kind === 'moving') return assets.jelly_green || assets.gumdrop_green || assets.wafer_moving || baseImg;
+      if (p.kind === 'float') return assets.gumdrops_decor || assets.gumdrop_pink || assets.jelly_pink || baseImg;
+      if (p.kind === 'bounce') return assets.gumdrop_pink || assets.jelly_pink || baseImg;
+    }
+    if (theme === 'meadow' || theme === 'lollipops') {
       if (p.kind === 'icing') return p.w > 180 ? assets.candy_cane_straight || assets.icing_strip || baseImg : assets.lollipop_green || baseImg;
       if (p.kind === 'cookie') return p.crumbleTimer > 0 ? baseImg : assets.candy_cane_pink || assets.lollipop_swirl || baseImg;
       if (p.kind === 'moving') return assets.rod_pink || assets.wafer_moving || baseImg;
@@ -2140,7 +2150,10 @@
   }
 
   function platformThemeStyle(theme, kind) {
-    if (theme === 'meadow' || theme === 'lollipops' || theme === 'gummy') {
+    if (theme === 'gummy') {
+      return { glow: 'rgba(255,141,197,0.22)', stroke: 'rgba(255,229,245,0.58)', filter: kind === 'break' ? 'none' : 'saturate(1.1) brightness(1.04)', accent: '#ff8dc5' };
+    }
+    if (theme === 'meadow' || theme === 'lollipops') {
       return { glow: 'rgba(255,158,208,0.22)', stroke: 'rgba(255,255,255,0.58)', filter: kind === 'break' ? 'none' : 'saturate(1.12) brightness(1.04)', accent: '#ff74ba' };
     }
     if (theme === 'falls' || theme === 'mallows') {
@@ -2178,8 +2191,11 @@
     ctx.lineTo(p.x + p.w - 8, drawY + 4);
     ctx.stroke();
 
-    if (theme === 'meadow' || theme === 'lollipops' || theme === 'gummy') {
-      const icon = theme === 'gummy' ? assets.gumdrop_pink : assets.lollipop_swirl;
+    if (theme === 'gummy') {
+      const icon = assets.gumdrop_pink || assets.jelly_pink;
+      if (icon && p.w >= 84) drawImageCentered(icon, p.x + p.w / 2, drawY + 1, 18);
+    } else if (theme === 'meadow' || theme === 'lollipops') {
+      const icon = assets.lollipop_swirl;
       if (icon && p.w >= 84) drawImageCentered(icon, p.x + p.w / 2, drawY + 1, 18);
     } else if (theme === 'falls' || theme === 'mallows') {
       ctx.fillStyle = 'rgba(255,255,255,0.72)';
@@ -2198,6 +2214,7 @@
   }
 
   function reducedPlatformColors(theme, kind) {
+    if (theme === 'gummy') return { fill: kind === 'float' ? '#8de4ff' : '#ff8fc8', top: '#ffd4ea', stroke: '#c65394' };
     if (kind === 'cookie' || kind === 'break') return { fill: '#f7c471', top: '#fff0b8', stroke: '#b8753a' };
     if (kind === 'choco') return { fill: '#8f5a40', top: '#d6a36a', stroke: '#5a2e20' };
     if (kind === 'wafer' || kind === 'tilt') return { fill: '#d9a24f', top: '#ffe0a4', stroke: '#916033' };
@@ -2205,7 +2222,6 @@
     if (theme === 'falls' || theme === 'mallows') return { fill: '#a8edff', top: '#f5fdff', stroke: '#57b8dc' };
     if (theme === 'woods' || theme === 'jungle') return { fill: '#b7d66a', top: '#fff0a3', stroke: '#6f8f3d' };
     if (theme === 'courtyard' || theme === 'keep' || theme === 'sky') return { fill: '#ffb7d6', top: '#fff2b8', stroke: '#c76b9b' };
-    if (theme === 'gummy') return { fill: '#ff8fc8', top: '#ffd4ea', stroke: '#c65394' };
     return { fill: '#ff9ed0', top: '#fff1f8', stroke: '#cf5c9d' };
   }
 
@@ -2226,12 +2242,14 @@
   }
 
   function drawThemedPlatformSprite(img, p, drawY, h, style) {
-    if (reducedEffectsMode()) {
+    if (!drawableImage(img)) {
       drawReducedPlatformSurface(p, currentPlatformTheme(), drawY);
       return;
     }
     const renderStyle = platformRenderStyle(style);
-    roundRect(p.x - 3, drawY - 3, p.w + 6, Math.max(16, p.h + 8), 7, renderStyle.glow, renderStyle.stroke);
+    if (!reducedEffectsMode()) {
+      roundRect(p.x - 3, drawY - 3, p.w + 6, Math.max(16, p.h + 8), 7, renderStyle.glow, renderStyle.stroke);
+    }
     ctx.save();
     ctx.filter = renderFilter(renderStyle.filter);
     drawImageBottom(img, p.x, drawY + p.h + 12, h, p.w);
@@ -2242,7 +2260,9 @@
   function drawThemedBouncePlatform(p, theme) {
     const pulse = Math.sin(time * 0.18 + p.x * 0.02) * 2;
     const style = platformRenderStyle(platformThemeStyle(theme, p.kind));
-    const img = theme === 'woods' || theme === 'jungle'
+    const img = theme === 'gummy'
+      ? assets.gumdrop_pink || assets.jelly_pink || assets.marshmallow_1
+      : theme === 'woods' || theme === 'jungle'
       ? assets.gumdrop_green || assets.marshmallow_1
       : theme === 'courtyard' || theme === 'keep' || theme === 'sky'
         ? assets.cake_disc_3 || assets.marshmallow_1
@@ -2254,26 +2274,32 @@
   }
 
   function drawThemedFloatPlatform(p, theme) {
-    if (reducedEffectsMode()) {
+    const style = platformRenderStyle(platformThemeStyle(theme, p.kind));
+    const top = theme === 'gummy'
+      ? assets.gumdrops_decor || assets.gumdrop_pink || assets.jelly_pink
+      : theme === 'meadow' || theme === 'lollipops'
+        ? assets.candy_cane_pink || assets.candy_cane_straight || assets.lollipop_swirl
+        : theme === 'falls' || theme === 'mallows'
+          ? assets.marshmallow_2 || assets.icing_strip
+          : theme === 'woods' || theme === 'jungle'
+            ? assets.wafer_platform || assets.wafer_long
+            : assets.cake_disc_2 || assets.frosting_ground || assets.icing_block;
+    const stem = theme === 'gummy'
+      ? assets.jelly_green || assets.gumdrop_green
+      : theme === 'woods' || theme === 'jungle'
+        ? assets.wafer_pole || assets.lollipop_green
+        : theme === 'courtyard' || theme === 'keep' || theme === 'sky'
+          ? assets.frosting_column || assets.gate_post || assets.lollipop_green
+          : assets.lollipop_pink || assets.lollipop_green;
+    if (!drawableImage(top)) {
       drawReducedPlatformSurface(p, theme, p.y);
       return;
     }
-    const style = platformRenderStyle(platformThemeStyle(theme, p.kind));
-    const top = theme === 'meadow' || theme === 'lollipops' || theme === 'gummy'
-      ? assets.candy_cane_pink || assets.candy_cane_straight || assets.lollipop_swirl
-      : theme === 'falls' || theme === 'mallows'
-        ? assets.marshmallow_2 || assets.icing_strip
-        : theme === 'woods' || theme === 'jungle'
-          ? assets.wafer_platform || assets.wafer_long
-          : assets.cake_disc_2 || assets.frosting_ground || assets.icing_block;
-    const stem = theme === 'woods' || theme === 'jungle'
-      ? assets.wafer_pole || assets.lollipop_green
-      : theme === 'courtyard' || theme === 'keep' || theme === 'sky'
-        ? assets.frosting_column || assets.gate_post || assets.lollipop_green
-        : assets.lollipop_pink || assets.lollipop_green;
-    roundRect(p.x - 4, p.y + 1, p.w + 8, p.h + 11, 8, style.glow, style.stroke);
+    if (!reducedEffectsMode()) {
+      roundRect(p.x - 4, p.y + 1, p.w + 8, p.h + 11, 8, style.glow, style.stroke);
+    }
     if (stem) drawImageBottom(stem, p.x + p.w / 2 - 20, p.y + p.h + 22, 54, 40);
-    if (top) drawImageBottom(top, p.x, p.y + p.h + 10, 34, p.w);
+    drawImageBottom(top, p.x, p.y + p.h + 10, 34, p.w);
   }
 
   function drawThemedGate(p, theme, openAlpha = 0.95, star = assets.star_blue) {
