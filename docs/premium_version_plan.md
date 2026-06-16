@@ -78,6 +78,12 @@ Optional side and bonus content:
 
 Side and bonus content should reward exploration, specials, medals, and replay mastery without blocking casual World 1 completion unless a future task explicitly changes that rule.
 
+Marshmallow Driftway, Lantern Lollipop Loop, and Sugar Skyway Sprint are optional route-positioned side stages. When they are unlocked, they should appear inline in map navigation near their parent route:
+
+`Meadow -> Grove -> Pretzel -> Jungle -> Drift -> Falls -> Woods -> Loop -> Cake -> Skyway -> Gate`
+
+This route order is for selection readability. It does not make Drift, Loop, or Skyway required main-path stages.
+
 ## 4. Premium Feature Roadmap
 
 ### Phase 1: Stability and verification

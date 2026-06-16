@@ -221,105 +221,130 @@
     updateFullscreenButton();
   }
 
-  function readUnlockedLevel() {
+  function storageArea() {
     try {
-      const raw = localStorage.getItem(saveKey);
+      return window.localStorage || null;
+    } catch {}
+    return null;
+  }
+
+  function readStorageValue(key) {
+    const storage = storageArea();
+    if (!storage) return null;
+    try {
+      return storage.getItem(key);
+    } catch {}
+    return null;
+  }
+
+  function writeStorageValue(key, value) {
+    const storage = storageArea();
+    if (!storage) return;
+    try {
+      storage.setItem(key, value);
+    } catch {}
+  }
+
+  function removeStorageValue(key) {
+    const storage = storageArea();
+    if (!storage) return;
+    try {
+      storage.removeItem(key);
+    } catch {}
+  }
+
+  function readStorageJson(key) {
+    try {
+      const raw = readStorageValue(key);
+      return raw === null ? null : JSON.parse(raw);
+    } catch {}
+    return null;
+  }
+
+  function blankSpecialProgress() {
+    return LEVELS.map(level => Array((level.specials || []).length).fill(false));
+  }
+
+  function normalizeSpecialProgress(raw) {
+    return blankSpecialProgress().map((row, levelIdx) => {
+      const savedRow = Array.isArray(raw) && Array.isArray(raw[levelIdx]) ? raw[levelIdx] : [];
+      return row.map((_, specialIdx) => !!savedRow[specialIdx]);
+    });
+  }
+
+  function normalizeRewardProgress(raw) {
+    return LEVELS.map((_, idx) => !!(Array.isArray(raw) && raw[idx]));
+  }
+
+  function normalizeMedalProgress(raw) {
+    return Array.from({ length: ALL_STAGE_COUNT }, (_, idx) => {
+      const row = Array.isArray(raw) && raw[idx] && typeof raw[idx] === 'object' ? raw[idx] : {};
+      return {
+        swift: !!row.swift,
+        steady: !!row.steady,
+        specialist: !!row.specialist
+      };
+    });
+  }
+
+  function readUnlockedLevel() {
+    const raw = readStorageValue(saveKey);
+    if (raw !== null) {
       const parsed = Number(raw);
       if (Number.isInteger(parsed)) return Math.max(0, Math.min(MAIN_LEVEL_COUNT - 1, parsed));
-    } catch {}
+    }
     return 0;
   }
 
   function readSelectedHero() {
-    try {
-      const hero = localStorage.getItem(heroSaveKey);
-      return hero === 'girl' ? 'girl' : 'boy';
-    } catch {}
-    return 'boy';
+    return readStorageValue(heroSaveKey) === 'girl' ? 'girl' : 'boy';
   }
 
   function persistSelectedHero() {
-    try {
-      localStorage.setItem(heroSaveKey, selectedHero);
-    } catch {}
+    writeStorageValue(heroSaveKey, selectedHero);
   }
 
   function persistUnlockedLevel() {
-    try {
-      localStorage.setItem(saveKey, String(unlockedLevel));
-    } catch {}
+    writeStorageValue(saveKey, String(unlockedLevel));
   }
 
   function readSpecialProgress() {
-    const blank = LEVELS.map(level => Array((level.specials || []).length).fill(false));
-    try {
-      const raw = JSON.parse(localStorage.getItem(specialSaveKey) || 'null');
-      if (!Array.isArray(raw)) return blank;
-      return blank.map((row, levelIdx) => row.map((_, specialIdx) => !!(raw[levelIdx] && raw[levelIdx][specialIdx])));
-    } catch {}
-    return blank;
+    return normalizeSpecialProgress(readStorageJson(specialSaveKey));
   }
 
   function persistSpecialProgress() {
-    try {
-      localStorage.setItem(specialSaveKey, JSON.stringify(specialProgress));
-    } catch {}
+    writeStorageValue(specialSaveKey, JSON.stringify(normalizeSpecialProgress(specialProgress)));
   }
 
   function readRewardProgress() {
-    const blank = LEVELS.map(() => false);
-    try {
-      const raw = JSON.parse(localStorage.getItem(rewardSaveKey) || 'null');
-      if (!Array.isArray(raw)) return blank;
-      return blank.map((_, idx) => !!raw[idx]);
-    } catch {}
-    return blank;
+    return normalizeRewardProgress(readStorageJson(rewardSaveKey));
   }
 
   function persistRewardProgress() {
-    try {
-      localStorage.setItem(rewardSaveKey, JSON.stringify(rewardProgress));
-    } catch {}
+    writeStorageValue(rewardSaveKey, JSON.stringify(normalizeRewardProgress(rewardProgress)));
   }
 
   function readMedalProgress() {
-    const blank = Array.from({ length: ALL_STAGE_COUNT }, () => ({ swift: false, steady: false, specialist: false }));
-    try {
-      const raw = JSON.parse(localStorage.getItem(medalSaveKey) || 'null');
-      if (!Array.isArray(raw)) return blank;
-      return blank.map((row, idx) => ({
-        swift: !!(raw[idx] && raw[idx].swift),
-        steady: !!(raw[idx] && raw[idx].steady),
-        specialist: !!(raw[idx] && raw[idx].specialist)
-      }));
-    } catch {}
-    return blank;
+    return normalizeMedalProgress(readStorageJson(medalSaveKey));
   }
 
   function persistMedalProgress() {
-    try {
-      localStorage.setItem(medalSaveKey, JSON.stringify(medalProgress));
-    } catch {}
+    writeStorageValue(medalSaveKey, JSON.stringify(normalizeMedalProgress(medalProgress)));
   }
 
   function readPlayerOptions() {
     const defaults = { soundOn: true, musicOn: true, reducedEffects: true };
-    try {
-      const raw = JSON.parse(localStorage.getItem(optionsSaveKey) || 'null');
-      if (!raw || typeof raw !== 'object') return defaults;
-      return {
-        soundOn: typeof raw.soundOn === 'boolean' ? raw.soundOn : defaults.soundOn,
-        musicOn: typeof raw.musicOn === 'boolean' ? raw.musicOn : defaults.musicOn,
-        reducedEffects: typeof raw.reducedEffects === 'boolean' ? raw.reducedEffects : defaults.reducedEffects
-      };
-    } catch {}
-    return defaults;
+    const raw = readStorageJson(optionsSaveKey);
+    if (!raw || typeof raw !== 'object') return defaults;
+    return {
+      soundOn: typeof raw.soundOn === 'boolean' ? raw.soundOn : defaults.soundOn,
+      musicOn: typeof raw.musicOn === 'boolean' ? raw.musicOn : defaults.musicOn,
+      reducedEffects: typeof raw.reducedEffects === 'boolean' ? raw.reducedEffects : defaults.reducedEffects
+    };
   }
 
   function persistPlayerOptions() {
-    try {
-      localStorage.setItem(optionsSaveKey, JSON.stringify({ soundOn, musicOn, reducedEffects: reducedEffectsPreference }));
-    } catch {}
+    writeStorageValue(optionsSaveKey, JSON.stringify({ soundOn, musicOn, reducedEffects: reducedEffectsPreference }));
   }
 
   function applyPlayerOptions(options) {
@@ -403,11 +428,9 @@
     specialProgress = LEVELS.map(level => Array((level.specials || []).length).fill(false));
     rewardProgress = LEVELS.map(() => false);
     medalProgress = Array.from({ length: ALL_STAGE_COUNT }, () => ({ swift: false, steady: false, specialist: false }));
-    try {
-      for (const key of legacyProgressSaveKeys) localStorage.removeItem(key);
-      // Future stable-ID saves should clear with Reset Progress, but are not written yet.
-      localStorage.removeItem(versionedSaveKey);
-    } catch {}
+    for (const key of legacyProgressSaveKeys) removeStorageValue(key);
+    // Future stable-ID saves should clear with Reset Progress, but are not written yet.
+    removeStorageValue(versionedSaveKey);
     totalCandy = 0;
     nextExtraLifeAt = 45;
     lives = maxLives;
@@ -2795,6 +2818,14 @@
       }
       return nodeLayout[index] || nodeLayout[0];
     };
+    const drawMapStatePill = (x, y, text, fill, color, width = null) => {
+      const pillW = width || (compact ? 42 : 46);
+      const pillH = compact ? 13 : 14;
+      roundRect(x - pillW / 2, y - pillH / 2, pillW, pillH, pillH / 2, fill, 'rgba(90,46,32,.10)');
+      ctx.fillStyle = color;
+      ctx.font = compact ? '900 7px system-ui' : '900 8px system-ui';
+      ctx.fillText(text, x, y + (compact ? 3 : 3));
+    };
 
     ctx.save();
     if (worldMapBackground.complete && worldMapBackground.naturalWidth > 0) {
@@ -2841,15 +2872,17 @@
     }
 
     for (const branch of branchLayout) {
-      if (branch.levelIndex > unlockedLevel) continue;
       const main = mainLayoutForStageIndex(branch.levelIndex);
       if (!main) continue;
-      ctx.strokeStyle = rewardRouteUnlocked(branch.levelIndex) ? 'rgba(255,240,170,.72)' : 'rgba(255,255,255,.28)';
-      ctx.lineWidth = compact ? 5 : 6;
+      const branchUnlocked = branch.levelIndex <= unlockedLevel && rewardRouteUnlocked(branch.levelIndex);
+      ctx.strokeStyle = branchUnlocked ? 'rgba(255,240,170,.72)' : 'rgba(255,255,255,.24)';
+      ctx.lineWidth = compact ? (branchUnlocked ? 5 : 4) : (branchUnlocked ? 6 : 5);
+      if (!branchUnlocked) ctx.setLineDash([8, 8]);
       ctx.beginPath();
       ctx.moveTo(main.x, main.y);
       ctx.quadraticCurveTo((main.x + branch.x) / 2, Math.min(main.y, branch.y) - (compact ? 18 : 22), branch.x, branch.y);
       ctx.stroke();
+      ctx.setLineDash([]);
     }
 
     for (const branch of branchLayout) {
@@ -2891,6 +2924,9 @@
       const plateW = compact ? (isNext ? 72 : 64) : 62;
       const plateH = compact ? (isNext ? 64 : 58) : 58;
       const iconSize = compact ? (node.icon === 'candy_arch' ? 32 : 23) : (node.icon === 'candy_arch' ? 34 : 24);
+      const stateText = isNext ? 'NOW' : completed ? 'CLEAR' : unlocked ? 'OPEN' : 'LOCKED';
+      const stateFill = isNext ? 'rgba(255,242,122,.94)' : completed ? 'rgba(255,255,255,.92)' : unlocked ? 'rgba(231,255,233,.92)' : 'rgba(238,232,236,.88)';
+      const stateColor = isNext ? '#8a5b00' : completed ? '#d83787' : unlocked ? '#287a50' : '#7f7078';
 
       roundRect(pos.x - plateW / 2, pos.y - plateH / 2, plateW, plateH, compact ? 18 : 20, plateFill, 'rgba(90,46,32,.12)');
       ctx.fillStyle = ringFill;
@@ -2907,16 +2943,7 @@
         ctx.fillText('LOCK', pos.x, pos.y + 2);
       }
 
-      if (completed) {
-        roundRect(pos.x - (compact ? 18 : 20), pos.y - (compact ? 40 : 44), compact ? 36 : 40, compact ? 12 : 14, 7, 'rgba(255,255,255,.88)', 'rgba(216,55,135,.18)');
-        ctx.fillStyle = '#d83787';
-        ctx.font = compact ? '900 8px system-ui' : '900 9px system-ui';
-        ctx.fillText('CLEAR', pos.x, pos.y - (compact ? 31 : 34));
-        roundRect(pos.x - (compact ? 28 : 32), pos.y + pos.labelDy + (compact ? 18 : 20), compact ? 56 : 64, compact ? 10 : 11, 6, 'rgba(255,232,170,.96)', 'rgba(216,55,135,.12)');
-        ctx.fillStyle = '#a45627';
-        ctx.font = compact ? '900 7px system-ui' : '900 8px system-ui';
-        ctx.fillText('WORLD CLEAR', pos.x, pos.y + pos.labelDy + (compact ? 25 : 28));
-      }
+      drawMapStatePill(pos.x, pos.y - (compact ? 40 : 43), stateText, stateFill, stateColor, stateText === 'LOCKED' ? (compact ? 50 : 54) : null);
 
       if (isNext) {
         ctx.strokeStyle = '#fff27a';
@@ -2965,17 +2992,27 @@
     });
 
     for (const branch of branchLayout) {
-      if (branch.levelIndex > unlockedLevel) continue;
       const worldDone = hasAllSpecialsInLevel(branch.levelIndex);
-      const branchUnlocked = rewardRouteUnlocked(branch.levelIndex);
+      const branchUnlocked = branch.levelIndex <= unlockedLevel && rewardRouteUnlocked(branch.levelIndex);
       const branchSelected = mapMarkerToIndex === branchNodeId(branch.levelIndex);
       const branchHint = mapBranchHintTimer > 0;
-      const plateW = compact ? 54 : 54;
-      const plateH = compact ? 44 : 42;
-      roundRect(branch.x - plateW / 2, branch.y - plateH / 2, plateW, plateH, compact ? 15 : 17, branchUnlocked ? branch.plate : 'rgba(240,234,238,.78)', 'rgba(90,46,32,.10)');
+      const plateW = compact ? 50 : 52;
+      const plateH = compact ? 42 : 42;
+      ctx.save();
+      ctx.translate(branch.x, branch.y - 4);
+      ctx.rotate(Math.PI / 4);
+      roundRect(-plateW / 2, -plateH / 2, plateW, plateH, 10, branchUnlocked ? branch.plate : 'rgba(240,234,238,.78)', branchUnlocked ? 'rgba(164,86,39,.24)' : 'rgba(90,46,32,.10)');
+      if (!branchUnlocked) {
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = 'rgba(127,112,120,.50)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.restore();
       ctx.fillStyle = branchUnlocked ? branch.color : '#d8c8d0';
       ctx.beginPath();
-      ctx.arc(branch.x, branch.y - 4, compact ? 14 : 14, 0, Math.PI * 2);
+      ctx.arc(branch.x, branch.y - 4, compact ? 13 : 13, 0, Math.PI * 2);
       ctx.fill();
       if (branchHint) {
         ctx.save();
@@ -3000,13 +3037,21 @@
         ctx.font = compact ? '900 9px system-ui' : '900 9px system-ui';
         ctx.fillText('LOCK', branch.x, branch.y - 1);
       }
+      drawMapStatePill(
+        branch.x,
+        branch.y - (compact ? 31 : 32),
+        branchSelected && branchUnlocked ? 'NOW' : branchUnlocked ? 'SIDE' : 'LOCKED',
+        branchSelected && branchUnlocked ? 'rgba(255,242,122,.94)' : branchUnlocked ? 'rgba(255,248,239,.90)' : 'rgba(238,232,236,.88)',
+        branchSelected && branchUnlocked ? '#8a5b00' : branchUnlocked ? '#a45627' : '#7f7078',
+        branchUnlocked && !branchSelected ? (compact ? 38 : 42) : (compact ? 50 : 54)
+      );
       roundRect(branch.x - (compact ? 31 : 30), branch.y + (compact ? 17 : 16), compact ? 62 : 60, compact ? 15 : 13, 7, 'rgba(255,248,239,.82)', 'rgba(90,46,32,.08)');
       ctx.fillStyle = '#5a2e20';
       ctx.font = compact ? '800 9px system-ui' : '800 8px system-ui';
       ctx.fillText(branch.label, branch.x, branch.y + (compact ? 28 : 25));
       ctx.fillStyle = !branchUnlocked ? '#8f7f88' : worldDone ? '#d83787' : '#a45627';
       ctx.font = compact ? '900 6px system-ui' : '900 7px system-ui';
-      ctx.fillText(!branchUnlocked ? 'LOCKED' : worldDone ? 'OPEN' : 'SIDE', branch.x, branch.y + (compact ? 39 : 35));
+      ctx.fillText(!branchUnlocked ? 'OPTIONAL' : worldDone ? 'REWARD' : 'OPTION', branch.x, branch.y + (compact ? 39 : 35));
     }
 
     if (globalAllSpecials) {
@@ -3015,6 +3060,14 @@
       ctx.beginPath();
       ctx.arc(bonusNode.x, bonusNode.y - 5, compact ? 16 : 18, 0, Math.PI * 2);
       ctx.fill();
+      drawMapStatePill(
+        bonusNode.x,
+        bonusNode.y - (compact ? 40 : 44),
+        mapLevelIndex === BONUS_STAGE_INDEX ? 'NOW' : 'BONUS',
+        mapLevelIndex === BONUS_STAGE_INDEX ? 'rgba(255,242,122,.94)' : 'rgba(255,248,239,.92)',
+        mapLevelIndex === BONUS_STAGE_INDEX ? '#8a5b00' : '#d83787',
+        compact ? 52 : 58
+      );
       drawImageCentered(assets[bonusNode.icon], bonusNode.x, bonusNode.y - 6, compact ? 18 : 22);
       if (medalCount(BONUS_STAGE_INDEX) > 0) drawImageCentered(assets.star_blue, bonusNode.x + (compact ? 20 : 24), bonusNode.y - (compact ? 22 : 26), compact ? 10 : 12);
       roundRect(bonusNode.x - (compact ? 34 : 40), bonusNode.y + (compact ? 12 : 14), compact ? 68 : 80, compact ? 14 : 16, 7, 'rgba(255,248,239,.88)', 'rgba(255,242,122,.24)');
@@ -3091,10 +3144,10 @@
     }
 
     if (!compact) {
-      roundRect(18, H - 42, 258, 26, 12, 'rgba(255,248,239,.68)', '#ffffff');
+      roundRect(18, H - 42, 356, 26, 12, 'rgba(255,248,239,.68)', '#ffffff');
       ctx.fillStyle = '#7a3c65';
       ctx.font = '800 11px system-ui';
-      ctx.fillText(mapBranchHintTimer > 0 ? 'Side stages are highlighted on the map.' : 'Unlock side stages by finding all specials in that world.', 147, H - 25, 236);
+      ctx.fillText(mapBranchHintTimer > 0 ? 'Side stages are highlighted on the map.' : 'Round nodes are main path. Diamond nodes are optional side routes.', 196, H - 25, 336);
     }
 
     if (mapRevealTimer > 0) {

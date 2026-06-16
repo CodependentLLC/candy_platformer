@@ -250,6 +250,100 @@ function checkMapData(stageIds) {
     if (!node.stageId && !inferredStage) failGlobal(`${nodeLabel}: has no matching main level stage.`);
   }
 
+  function branchNodeId(levelIndex) {
+    return MAP_NODE_BRANCH_OFFSET + levelIndex;
+  }
+
+  function routeNodeLabel(map, routeNodeId) {
+    if (routeNodeId === MAP_NODE_BONUS) return map.bonusNode?.label || 'Bonus';
+    if (Number.isInteger(routeNodeId) && routeNodeId >= MAP_NODE_BRANCH_OFFSET) {
+      const branch = (map.branchNodes || []).find(node => branchNodeId(node.levelIndex) === routeNodeId);
+      return branch?.label;
+    }
+    return map.mainNodes?.[routeNodeId]?.label;
+  }
+
+  function checkRouteNodeIds(map, label) {
+    if (map.routeNodeIds === undefined) return;
+    if (!Array.isArray(map.routeNodeIds)) {
+      failGlobal(`${label}: routeNodeIds must be an array when present.`);
+      return;
+    }
+
+    const mainNodes = Array.isArray(map.mainNodes) ? map.mainNodes : [];
+    const branchNodes = Array.isArray(map.branchNodes) ? map.branchNodes : [];
+    const duplicateCheck = new Set();
+    const mainRouteCounts = new Map(mainNodes.map((_, index) => [index, 0]));
+
+    map.routeNodeIds.forEach((routeNodeId, index) => {
+      const routeLabel = `${label} routeNodeIds[${index}]`;
+      if (!Number.isInteger(routeNodeId)) {
+        failGlobal(`${routeLabel}: route node id must be an integer.`);
+        return;
+      }
+      if (duplicateCheck.has(routeNodeId)) {
+        failGlobal(`${routeLabel}: duplicate route node id ${routeNodeId}.`);
+      }
+      duplicateCheck.add(routeNodeId);
+
+      if (routeNodeId === MAP_NODE_BONUS) return;
+      if (routeNodeId >= MAP_NODE_BRANCH_OFFSET) {
+        const branchLevelIndex = routeNodeId - MAP_NODE_BRANCH_OFFSET;
+        const branchExists = branchNodes.some(node => node.levelIndex === branchLevelIndex);
+        if (!branchExists) failGlobal(`${routeLabel}: does not reference a valid branch node.`);
+        return;
+      }
+      if (routeNodeId < 0 || routeNodeId >= mainNodes.length) {
+        failGlobal(`${routeLabel}: does not reference a valid main node.`);
+        return;
+      }
+      mainRouteCounts.set(routeNodeId, (mainRouteCounts.get(routeNodeId) || 0) + 1);
+    });
+
+    for (const [mainNodeId, count] of mainRouteCounts) {
+      if (count !== 1) {
+        const nodeLabel = mainNodes[mainNodeId]?.label || `main node ${mainNodeId}`;
+        failGlobal(`${label}: visible main node "${nodeLabel}" must appear exactly once in routeNodeIds.`);
+      }
+    }
+
+    if (map.mapId === 'world-1-map') {
+      const finalMainNodeId = mainNodes.length - 1;
+      if (map.routeNodeIds[map.routeNodeIds.length - 1] !== finalMainNodeId) {
+        const finalLabel = mainNodes[finalMainNodeId]?.label || 'final main node';
+        failGlobal(`${label}: ${finalLabel} must be the last route node.`);
+      }
+
+      const expectedWorldOneSelectableRoute = [
+        'Meadow',
+        'Grove',
+        'Pretzel',
+        'Jungle',
+        'Drift',
+        'Falls',
+        'Woods',
+        'Loop',
+        'Cake',
+        'Skyway',
+        'Gate'
+      ];
+      const routeLabels = map.routeNodeIds.map(routeNodeId => routeNodeLabel(map, routeNodeId));
+      if (
+        routeLabels.length !== expectedWorldOneSelectableRoute.length
+        || routeLabels.some((routeLabel, index) => routeLabel !== expectedWorldOneSelectableRoute[index])
+      ) {
+        failGlobal(`${label}: routeNodeIds must follow optional route-positioned selectable order ${expectedWorldOneSelectableRoute.join(' -> ')}.`);
+      }
+
+      for (const routePosition of [4, 7, 9]) {
+        const routeNodeId = map.routeNodeIds[routePosition];
+        if (!Number.isInteger(routeNodeId) || routeNodeId < MAP_NODE_BRANCH_OFFSET || routeNodeId === MAP_NODE_BONUS) {
+          failGlobal(`${label}: optional route-positioned node "${expectedWorldOneSelectableRoute[routePosition]}" must be a branch node id.`);
+        }
+      }
+    }
+  }
+
   if (!WORLD_MAPS || typeof WORLD_MAPS !== 'object' || Array.isArray(WORLD_MAPS)) {
     failGlobal('CandyQuestMap.WORLD_MAPS must be an object keyed by map id.');
   }
@@ -283,6 +377,7 @@ function checkMapData(stageIds) {
     if (!map.bonusNode || typeof map.bonusNode !== 'object') failGlobal(`${label}: bonusNode must be an object.`);
     const mainNodes = Array.isArray(map.mainNodes) ? map.mainNodes : [];
     const branchNodes = Array.isArray(map.branchNodes) ? map.branchNodes : [];
+    checkRouteNodeIds(map, label);
     mainNodes.forEach((node, index) => {
       const nodeLabel = `${label} main node ${index}`;
       checkMainMapStageReference(node, nodeLabel, index);

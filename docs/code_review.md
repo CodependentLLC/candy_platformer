@@ -109,6 +109,7 @@ For future multi-world changes, check:
 - World-map nodes reference valid stages.
 - Main-path completion unlocks the next world clearly.
 - Side stages and medals stay optional for casual campaign completion.
+- Route-positioned side stages can appear inline in map navigation when unlocked, but they do not become required main-path stages.
 - World rewards and unlock copy are clear and family-friendly.
 - New world data does not require a build step or module conversion.
 
@@ -155,6 +156,7 @@ Useful validation requests:
 - Whether console errors appeared
 - Whether save data was tested with fresh and existing localStorage
 - Whether compact/mobile mode was checked
+- For map changes, whether optional side stages appear in the expected route position when unlocked and remain skippable for main progression
 
 ## Risk flags
 

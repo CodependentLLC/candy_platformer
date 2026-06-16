@@ -197,6 +197,8 @@ Use side stages for:
 
 Do not make side-stage mastery required to finish the main story unless the task explicitly changes the campaign structure.
 
+Some side stages may be route-positioned on the world map. Route-positioned side stages appear in the left/right map navigation near the part of the world they branch from once they are unlocked, but they remain optional. They must not block casual main-path progression or next-world unlocks unless a future task explicitly changes that rule.
+
 ## Win, ending, and story flow
 
 The final reward ending is part of the game's identity. Preserve the feeling that the player crossed a candy world and returned from an adventure.

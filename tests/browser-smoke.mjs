@@ -182,6 +182,12 @@ async function click(cdp, sessionId, selector) {
   })()`);
 }
 
+async function holdKey(cdp, sessionId, code, durationMs = 120) {
+  await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', code, key: code, autoRepeat: false }, sessionId);
+  await new Promise(resolveDelay => setTimeout(resolveDelay, durationMs));
+  await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', code, key: code }, sessionId);
+}
+
 async function waitForCondition(cdp, sessionId, expression, message) {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
@@ -200,6 +206,115 @@ function waitForExit(child) {
       resolveExit();
     });
   });
+}
+
+async function openWorldOneMap(cdp, sessionId) {
+  let action = await click(cdp, sessionId, '#menuButton');
+  if (!action.ok) {
+    action = await click(cdp, sessionId, '#menuBoyButton');
+    assert(action.ok, `Could not choose hero before opening World Select: ${action.reason || 'unknown'}`);
+  }
+  action = await click(cdp, sessionId, '#menuBoyButton');
+  if (!action.ok) {
+    const inActionMenu = await evaluate(cdp, sessionId, `(() => {
+      const actionView = document.querySelector('#menuActionView');
+      return !!actionView && !actionView.hidden;
+    })()`);
+    assert(inActionMenu, `Could not reach action menu before opening World Select: ${action.reason || 'unknown'}`);
+  }
+  action = await click(cdp, sessionId, '#mapButton');
+  assert(action.ok, `Could not click World Select: ${action.reason || 'unknown'}`);
+  await waitForCondition(
+    cdp,
+    sessionId,
+    `(() => {
+      const worldView = document.querySelector('#menuWorldView');
+      const worldOne = document.querySelector('#worldOneButton');
+      return !!worldView && !worldView.hidden && !!worldOne && !worldOne.disabled;
+    })()`,
+    'World Select did not open with a playable World 1 card.'
+  );
+  action = await click(cdp, sessionId, '#worldOneButton');
+  assert(action.ok, `Could not open World 1 map: ${action.reason || 'unknown'}`);
+  await waitForCondition(
+    cdp,
+    sessionId,
+    `(() => document.querySelector('.game-wrap')?.classList.contains('map-mode'))()`,
+    'World 1 map did not open.'
+  );
+}
+
+async function runWorldMapNavigationSmoke(cdp, sessionId, url) {
+  const loaded = cdp.waitFor('Page.loadEventFired', message => message.sessionId === sessionId);
+  await cdp.send('Page.navigate', { url }, sessionId);
+  await withTimeout(loaded, 'Timed out waiting for map navigation smoke page load.');
+
+  await evaluate(cdp, sessionId, `(() => {
+    localStorage.setItem('candy-platformer-selected-hero', 'boy');
+    localStorage.setItem('candy-platformer-unlocked-level', '5');
+    localStorage.setItem('candy-platformer-special-progress', JSON.stringify([
+      [false, false, false],
+      [true, true, true],
+      [true, true, true],
+      [true, true, true],
+      [false, false, false],
+      [false, false, false]
+    ]));
+    localStorage.setItem('candy-platformer-reward-progress', JSON.stringify([false, false, false, false, false, false]));
+    localStorage.removeItem('candy-platformer-save-v1');
+  })()`);
+
+  const reloaded = cdp.waitFor('Page.loadEventFired', message => message.sessionId === sessionId);
+  await cdp.send('Page.reload', {}, sessionId);
+  await withTimeout(reloaded, 'Timed out waiting for seeded map navigation smoke reload.');
+  await new Promise(resolveDelay => setTimeout(resolveDelay, 750));
+
+  await openWorldOneMap(cdp, sessionId);
+
+  const expectedRouteWithUnlockedOptionalBranches = [
+    { label: 'Meadow', stageName: 'Lollipop Meadow' },
+    { label: 'Grove', stageName: 'Gummy Grove' },
+    { label: 'Pretzel', stageName: 'Pretzel Path' },
+    { label: 'Jungle', stageName: 'Jungle Jelly Run' },
+    { label: 'Drift', stageName: 'Marshmallow Driftway' },
+    { label: 'Falls', stageName: 'Ice Cream Falls' },
+    { label: 'Woods', stageName: 'Waffle Woods' },
+    { label: 'Loop', stageName: 'Lantern Lollipop Loop' },
+    { label: 'Cake', stageName: 'Cake Courtyard' },
+    { label: 'Skyway', stageName: 'Sugar Skyway Sprint' },
+    { label: 'Gate', stageName: 'Kingdom Gate' }
+  ];
+  const visited = [];
+
+  for (let routeIndex = 0; routeIndex < expectedRouteWithUnlockedOptionalBranches.length; routeIndex += 1) {
+    if (routeIndex > 0) {
+      await holdKey(cdp, sessionId, 'ArrowRight', 40);
+      await new Promise(resolveDelay => setTimeout(resolveDelay, 650));
+    }
+
+    await holdKey(cdp, sessionId, 'Enter', 80);
+    await waitForCondition(
+      cdp,
+      sessionId,
+      `(() => document.querySelector('.game-wrap')?.classList.contains('play-mode'))()`,
+      `Selecting ${expectedRouteWithUnlockedOptionalBranches[routeIndex].label} did not start gameplay.`
+    );
+    const stageName = await evaluate(cdp, sessionId, `document.querySelector('#hudLevelName')?.textContent || ''`);
+    assert(
+      stageName === expectedRouteWithUnlockedOptionalBranches[routeIndex].stageName,
+      `Expected ${expectedRouteWithUnlockedOptionalBranches[routeIndex].label} to load "${expectedRouteWithUnlockedOptionalBranches[routeIndex].stageName}", got "${stageName}".`
+    );
+    visited.push(expectedRouteWithUnlockedOptionalBranches[routeIndex].label);
+
+    if (routeIndex < expectedRouteWithUnlockedOptionalBranches.length - 1) {
+      await openWorldOneMap(cdp, sessionId);
+    }
+  }
+
+  assert(
+    visited.join(', ') === expectedRouteWithUnlockedOptionalBranches.map(node => node.label).join(', '),
+    `World 1 optional route-positioned map navigation order mismatch: ${visited.join(' -> ')}`
+  );
 }
 
 async function run() {
@@ -357,6 +472,15 @@ async function run() {
         assert(gameplay.visibleTouchButtonCount >= 3, `Expected visible touch controls on mobile gameplay at ${viewport.name}.`);
       }
     }
+
+    await cdp.send('Emulation.setDeviceMetricsOverride', {
+      width: 1366,
+      height: 768,
+      deviceScaleFactor: 1,
+      mobile: false
+    }, sessionId);
+    await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false }, sessionId);
+    await runWorldMapNavigationSmoke(cdp, sessionId, url);
 
     assert(pageErrors.length === 0, `Uncaught page errors during boot:\n${pageErrors.join('\n')}`);
     assert(consoleErrors.length === 0, `Console errors during smoke:\n${consoleErrors.join('\n')}`);

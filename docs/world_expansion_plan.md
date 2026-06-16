@@ -29,6 +29,30 @@ Treat the current six-chapter campaign as World 1 for planning purposes. It can 
 
 Do not add lots of new content before this foundation is stable.
 
+Current World 1 main path:
+
+1. Lollipop Meadow
+2. Gummy Grove
+3. Pretzel Path
+4. Jungle Jelly Run
+5. Ice Cream Falls
+6. Waffle Woods
+7. Cake Courtyard
+8. Kingdom Gate
+
+Current optional side and bonus stages:
+
+- Marshmallow Driftway
+- Lantern Lollipop Loop
+- Sugar Skyway Sprint
+- Morning Star Run
+
+Marshmallow Driftway, Lantern Lollipop Loop, and Sugar Skyway Sprint are optional but route-positioned. When unlocked, map navigation should place them in context:
+
+`Meadow -> Grove -> Pretzel -> Jungle -> Drift -> Falls -> Woods -> Loop -> Cake -> Skyway -> Gate`
+
+This is selectable map order, not required completion order. Completing Drift, Loop, or Skyway must not be required to reach or complete Kingdom Gate unless a future task explicitly changes side-stage rules.
+
 ## Save Data Direction
 
 Save data should move away from fixed numeric level indexes and toward stable IDs.

@@ -63,6 +63,8 @@ Before adding new levels, open `index.html` and confirm these core flows still w
 - Start Adventure enters the first playable level.
 - World Map opens and selects unlocked worlds.
 - Side Stages opens and shows available side routes.
+- World 1 map keeps optional side stages route-positioned when unlocked: Drift after Jungle, Loop after Woods, and Skyway before Gate.
+- Optional side stages remain skippable; casual main progression can still reach Gate without requiring Drift, Loop, or Skyway completion.
 - Touch controls move and jump on a small or touch viewport.
 - Sound toggle switches sound on and off.
 - Fullscreen enters and exits cleanly.
