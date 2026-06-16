@@ -11,16 +11,23 @@
   const startButton = document.getElementById('startButton');
   const mapButton = document.getElementById('mapButton');
   const sideStagesButton = document.getElementById('sideStagesButton');
+  const optionsButton = document.getElementById('optionsButton');
   const resetProgressButton = document.getElementById('resetProgressButton');
+  const optionsResetProgressButton = document.getElementById('optionsResetProgressButton');
   const menuBoyButton = document.getElementById('menuBoyButton');
   const menuGirlButton = document.getElementById('menuGirlButton');
   const menuHeroView = document.getElementById('menuHeroView');
   const menuActionView = document.getElementById('menuActionView');
   const menuWorldView = document.getElementById('menuWorldView');
+  const menuOptionsView = document.getElementById('menuOptionsView');
   const menuSelectedHeroText = document.getElementById('menuSelectedHeroText');
   const backToHeroButton = document.getElementById('backToHeroButton');
   const backToActionsButton = document.getElementById('backToActionsButton');
+  const backFromOptionsButton = document.getElementById('backFromOptionsButton');
   const worldOneButton = document.getElementById('worldOneButton');
+  const optionsSoundButton = document.getElementById('optionsSoundButton');
+  const optionsMusicButton = document.getElementById('optionsMusicButton');
+  const optionsReducedEffectsButton = document.getElementById('optionsReducedEffectsButton');
   const soundButton = document.getElementById('soundButton');
   const fullscreenButton = document.getElementById('fullscreenButton');
   const pauseButton = document.getElementById('pauseButton');
@@ -51,6 +58,8 @@
   const levelTimeLimit = 60 * 60;
   let levelTimer = levelTimeLimit;
   let soundOn = true;
+  let musicOn = true;
+  let reducedEffectsPreference = true;
   let audioCtx = null;
   let musicState = '';
   let musicNextNoteTime = 0;
@@ -79,6 +88,7 @@
   const rewardSaveKey = 'candy-platformer-reward-progress';
   const medalSaveKey = 'candy-platformer-medal-progress';
   const versionedSaveKey = 'candy-platformer-save-v1';
+  const optionsSaveKey = 'candy-platformer-options';
   const currentSaveVersion = 1;
   const currentWorldId = 'world-1';
   // These legacy keys remain the source of truth until progression moves to stable world/stage IDs.
@@ -160,13 +170,25 @@
   function updateMenuStep() {
     const heroScreen = menuStep === 'hero';
     const worldScreen = menuStep === 'world';
-    const actionScreen = !heroScreen && !worldScreen;
+    const optionsScreen = menuStep === 'options';
+    const actionScreen = !heroScreen && !worldScreen && !optionsScreen;
     menuHeroView.hidden = !heroScreen;
     menuActionView.hidden = !actionScreen;
     menuWorldView.hidden = !worldScreen;
+    menuOptionsView.hidden = !optionsScreen;
     menuOverlay.classList.toggle('menu-hero-step', heroScreen);
     menuOverlay.classList.toggle('menu-action-step', actionScreen);
     menuOverlay.classList.toggle('menu-world-step', worldScreen);
+    menuOverlay.classList.toggle('menu-options-step', optionsScreen);
+  }
+
+  function updateOptionsButtons() {
+    optionsSoundButton.textContent = soundOn ? 'Sound On' : 'Sound Off';
+    optionsSoundButton.setAttribute('aria-pressed', soundOn ? 'true' : 'false');
+    optionsMusicButton.textContent = musicOn ? 'Music On' : 'Music Off';
+    optionsMusicButton.setAttribute('aria-pressed', musicOn ? 'true' : 'false');
+    optionsReducedEffectsButton.textContent = reducedEffectsPreference ? 'Reduced Effects On' : 'Reduced Effects Off';
+    optionsReducedEffectsButton.setAttribute('aria-pressed', reducedEffectsPreference ? 'true' : 'false');
   }
 
   function updateUiMode() {
@@ -182,7 +204,9 @@
     menuOverlay.hidden = gameState !== 'menu';
     updateMenuButtons();
     updateMenuStep();
-    soundButton.textContent = compact ? (soundOn ? 'SFX' : 'Off') : (mapMode ? (soundOn ? 'Sound' : 'Mute') : (soundOn ? 'Sound On' : 'Sound Off'));
+    updateOptionsButtons();
+    soundButton.textContent = compact ? (soundOn ? 'SFX' : 'Off') : (mapMode ? (soundOn ? 'SFX' : 'Mute') : (soundOn ? 'SFX On' : 'SFX Off'));
+    soundButton.setAttribute('aria-pressed', soundOn ? 'true' : 'false');
     fullscreenButton.textContent = compact ? 'Full' : 'Fullscreen';
     updatePauseButton();
     updateHeroButton();
@@ -276,6 +300,33 @@
     try {
       localStorage.setItem(medalSaveKey, JSON.stringify(medalProgress));
     } catch {}
+  }
+
+  function readPlayerOptions() {
+    const defaults = { soundOn: true, musicOn: true, reducedEffects: true };
+    try {
+      const raw = JSON.parse(localStorage.getItem(optionsSaveKey) || 'null');
+      if (!raw || typeof raw !== 'object') return defaults;
+      return {
+        soundOn: typeof raw.soundOn === 'boolean' ? raw.soundOn : defaults.soundOn,
+        musicOn: typeof raw.musicOn === 'boolean' ? raw.musicOn : defaults.musicOn,
+        reducedEffects: typeof raw.reducedEffects === 'boolean' ? raw.reducedEffects : defaults.reducedEffects
+      };
+    } catch {}
+    return defaults;
+  }
+
+  function persistPlayerOptions() {
+    try {
+      localStorage.setItem(optionsSaveKey, JSON.stringify({ soundOn, musicOn, reducedEffects: reducedEffectsPreference }));
+    } catch {}
+  }
+
+  function applyPlayerOptions(options) {
+    soundOn = !!options.soundOn;
+    musicOn = !!options.musicOn;
+    reducedEffectsPreference = options.reducedEffects !== false;
+    if (!musicOn) stopMusic();
   }
 
   function stageForSaveIndex(index) {
@@ -380,6 +431,12 @@
     updateUiMode();
   }
 
+  function openOptionsMenu() {
+    menuStep = 'options';
+    updateUiMode();
+    sound('click');
+  }
+
   function resumeRun() {
     if (!hasActiveRun || !['playing', 'map'].includes(menuReturnState)) return;
     gameState = menuReturnState;
@@ -474,7 +531,6 @@
   }
 
   function ensureAudio() {
-    if (!soundOn) return null;
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) return null;
     if (!audioCtx) audioCtx = new AudioContext();
@@ -505,7 +561,7 @@
   }
 
   function currentMusicMode() {
-    if (!soundOn) return 'silent';
+    if (!musicOn) return 'silent';
     if (gameState === 'menu') return 'menu';
     if (gameState === 'map') return 'map';
     if (gameState === 'escape' || gameState === 'ending') return 'ending';
@@ -548,6 +604,7 @@
   }
 
   function sound(kind) {
+    if (!soundOn) return;
     const ac = ensureAudio();
     if (!ac) return;
     const now = ac.currentTime;
@@ -1022,17 +1079,43 @@
   resumeButton.addEventListener('click', resumeRun);
   startButton.addEventListener('click', startAdventure);
   mapButton.addEventListener('click', () => { menuStep = 'world'; updateUiMode(); sound('click'); });
+  optionsButton.addEventListener('click', openOptionsMenu);
   worldOneButton.addEventListener('click', openWorldMap);
   sideStagesButton.addEventListener('click', openSideStagesMap);
   resetProgressButton.addEventListener('click', resetProgressAndReturnToMenu);
+  optionsResetProgressButton.addEventListener('click', resetProgressAndReturnToMenu);
   backToHeroButton.addEventListener('click', () => { menuStep = 'hero'; updateUiMode(); sound('click'); });
   backToActionsButton.addEventListener('click', () => { menuStep = 'actions'; updateUiMode(); sound('click'); });
+  backFromOptionsButton.addEventListener('click', () => { menuStep = 'actions'; updateUiMode(); sound('click'); });
 
   soundButton.addEventListener('click', () => {
     soundOn = !soundOn;
-    if (!soundOn) stopMusic();
+    persistPlayerOptions();
     updateUiMode();
     if (soundOn) sound('click');
+  });
+
+  optionsSoundButton.addEventListener('click', () => {
+    soundOn = !soundOn;
+    persistPlayerOptions();
+    updateUiMode();
+    if (soundOn) sound('click');
+  });
+
+  optionsMusicButton.addEventListener('click', () => {
+    musicOn = !musicOn;
+    if (!musicOn) stopMusic();
+    persistPlayerOptions();
+    updateUiMode();
+    if (soundOn) sound('click');
+  });
+
+  optionsReducedEffectsButton.addEventListener('click', () => {
+    reducedEffectsPreference = !reducedEffectsPreference;
+    persistPlayerOptions();
+    refreshCanvasProfile();
+    updateUiMode();
+    sound('click');
   });
 
   pauseButton.addEventListener('click', () => {
@@ -1134,7 +1217,7 @@
     keys.add(e.code);
     if (gameState === 'menu' && e.code === 'Enter') {
       if (menuStep === 'hero') openMenuActions();
-      else startAdventure();
+      else if (menuStep === 'actions') startAdventure();
     }
     if (gameState === 'playing' && ['ArrowUp','Space','KeyW'].includes(e.code)) jumpPressed = true;
     if (e.code === 'KeyR' && gameState === 'playing') loadLevel(levelIndex);
@@ -2520,7 +2603,7 @@
     compactCanvasCached = coarse || rect.width < 1180 || rect.height < 620 || minViewport < 760;
     coarsePointerCached = coarse;
     tabletCanvasCached = compactCanvasCached && minViewport >= 760;
-    reducedEffectsActive = compactCanvasCached;
+    reducedEffectsActive = compactCanvasCached && reducedEffectsPreference;
     canvasProfileReady = true;
   }
 
@@ -3299,6 +3382,7 @@
   }
 
   const saveState = readVersionedSave();
+  applyPlayerOptions(readPlayerOptions());
   unlockedLevel = saveState.legacy.unlockedLevel;
   selectedHero = saveState.legacy.selectedHero;
   specialProgress = saveState.legacy.specialProgress;
