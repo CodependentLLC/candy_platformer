@@ -75,6 +75,7 @@
                 <button id="startButton" type="button">Start Adventure</button>
                 <button id="mapButton" class="secondary" type="button">World Select</button>
                 <button id="sideStagesButton" class="secondary" type="button">Side Stages</button>
+                <button id="optionsButton" class="secondary" type="button">Options</button>
                 <button id="resetProgressButton" class="secondary danger" type="button">Reset Progress</button>
                 <button id="backToHeroButton" class="secondary" type="button">Back</button>
               </div>
@@ -106,6 +107,46 @@
               </div>
               <div class="menu-actions world-actions">
                 <button id="backToActionsButton" class="secondary" type="button">Back</button>
+              </div>
+            </div>
+
+            <div id="menuOptionsView" class="menu-view menu-options-view" hidden>
+              <p class="menu-kicker">Player Settings</p>
+              <h2 class="menu-subtitle">Options</h2>
+              <p class="menu-copy">Tune the adventure for your screen and play style.</p>
+              <div class="options-list" aria-label="Player options">
+                <div class="option-row">
+                  <div>
+                    <h3>Sound</h3>
+                    <p>Jump, candy, gate, and menu sounds.</p>
+                  </div>
+                  <button id="optionsSoundButton" class="secondary" type="button" aria-pressed="true">Sound On</button>
+                </div>
+                <div class="option-row">
+                  <div>
+                    <h3>Music</h3>
+                    <p>Gentle background music during menus, maps, and play.</p>
+                  </div>
+                  <button id="optionsMusicButton" class="secondary" type="button" aria-pressed="true">Music On</button>
+                </div>
+                <div class="option-row">
+                  <div>
+                    <h3>Reduced Effects</h3>
+                    <p>Lighter particles and canvas effects on smaller screens.</p>
+                  </div>
+                  <button id="optionsReducedEffectsButton" class="secondary" type="button" aria-pressed="true">Reduced Effects On</button>
+                </div>
+                <div class="option-row muted">
+                  <div>
+                    <h3>Touch Size</h3>
+                    <p>Touch control sizing will be tuned in a future mobile pass.</p>
+                  </div>
+                  <button id="optionsTouchSizeButton" class="secondary" type="button" disabled>Standard</button>
+                </div>
+              </div>
+              <div class="menu-actions options-actions">
+                <button id="optionsResetProgressButton" class="secondary danger" type="button">Reset Progress</button>
+                <button id="backFromOptionsButton" class="secondary" type="button">Back</button>
               </div>
             </div>
           </div>

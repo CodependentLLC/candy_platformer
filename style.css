@@ -329,6 +329,11 @@ button.danger:active { box-shadow: 0 2px 0 #b84c66; }
   text-align: center;
   gap: 6px;
 }
+.game-wrap.compact-ui .menu-options-view {
+  align-items: stretch;
+  text-align: center;
+  gap: 8px;
+}
 .game-wrap.compact-ui .menu-kicker {
   font-size: .62rem;
   letter-spacing: .06em;
@@ -418,6 +423,24 @@ button.danger:active { box-shadow: 0 2px 0 #b84c66; }
   font-size: .62rem;
   margin-top: 2px;
 }
+.game-wrap.compact-ui .options-list {
+  gap: 7px;
+}
+.game-wrap.compact-ui .option-row {
+  grid-template-columns: 1fr;
+  gap: 7px;
+  padding: 9px;
+}
+.game-wrap.compact-ui .option-row h3 {
+  font-size: .78rem;
+}
+.game-wrap.compact-ui .option-row p {
+  font-size: .62rem;
+}
+.game-wrap.compact-ui .option-row button {
+  min-height: 36px;
+  font-size: .66rem;
+}
 .game-wrap.compact-ui .world-actions {
   margin-top: 6px;
 }
@@ -457,7 +480,10 @@ button.danger:active { box-shadow: 0 2px 0 #b84c66; }
   display: none;
 }
 .game-wrap.compact-ui #resetProgressButton,
-.game-wrap.compact-ui #backToHeroButton {
+.game-wrap.compact-ui #backToHeroButton,
+.game-wrap.compact-ui #optionsButton,
+.game-wrap.compact-ui #optionsResetProgressButton,
+.game-wrap.compact-ui #backFromOptionsButton {
   min-height: 44px;
   font-size: .76rem;
 }
@@ -489,15 +515,22 @@ button.danger:active { box-shadow: 0 2px 0 #b84c66; }
 }
 .menu-overlay.menu-hero-step .menu-action-view,
 .menu-overlay.menu-hero-step .menu-world-view,
+.menu-overlay.menu-hero-step .menu-options-view,
 .menu-overlay.menu-action-step .menu-hero-view,
 .menu-overlay.menu-action-step .menu-world-view,
+.menu-overlay.menu-action-step .menu-options-view,
 .menu-overlay.menu-world-step .menu-hero-view,
-.menu-overlay.menu-world-step .menu-action-view {
+.menu-overlay.menu-world-step .menu-action-view,
+.menu-overlay.menu-world-step .menu-options-view,
+.menu-overlay.menu-options-step .menu-hero-view,
+.menu-overlay.menu-options-step .menu-action-view,
+.menu-overlay.menu-options-step .menu-world-view {
   display: none;
 }
 .menu-overlay.menu-hero-step .menu-hero-view,
 .menu-overlay.menu-action-step .menu-action-view,
-.menu-overlay.menu-world-step .menu-world-view {
+.menu-overlay.menu-world-step .menu-world-view,
+.menu-overlay.menu-options-step .menu-options-view {
   display: flex;
 }
 .menu-card {
@@ -526,7 +559,8 @@ button.danger:active { box-shadow: 0 2px 0 #b84c66; }
 .menu-action-view {
   width: 100%;
 }
-.menu-world-view {
+.menu-world-view,
+.menu-options-view {
   width: 100%;
 }
 .menu-card h1 {
@@ -682,6 +716,51 @@ button.danger:active { box-shadow: 0 2px 0 #b84c66; }
   color: #7f7078;
 }
 .world-actions {
+  margin-top: 12px;
+}
+.options-list {
+  width: 100%;
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+.option-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(136px, auto);
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255,255,255,.72);
+  border: 1px solid rgba(255,255,255,.58);
+  text-align: left;
+}
+.option-row h3 {
+  margin: 0 0 4px;
+  font-size: .94rem;
+  line-height: 1.05;
+  color: #d83787;
+}
+.option-row p {
+  margin: 0;
+  color: #5a2e20;
+  font-size: .74rem;
+  line-height: 1.28;
+}
+.option-row button {
+  width: 100%;
+  min-width: 136px;
+}
+.option-row.muted {
+  opacity: .72;
+}
+.option-row button[disabled] {
+  cursor: default;
+  opacity: .72;
+  background: #b9d7e3;
+  box-shadow: 0 5px 0 #7d9bab, 0 10px 22px rgba(90, 46, 32, .12);
+}
+.options-actions {
   margin-top: 12px;
 }
 .menu-heroes,
