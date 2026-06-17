@@ -8,9 +8,12 @@ const root = process.cwd();
 const timeoutMs = 15000;
 
 const viewports = [
-  { name: 'phone portrait', width: 390, height: 844, mobile: true },
-  { name: 'phone landscape', width: 844, height: 390, mobile: true },
+  { name: 'phone portrait 375x667', width: 375, height: 667, mobile: true },
+  { name: 'phone portrait 390x844', width: 390, height: 844, mobile: true },
+  { name: 'phone landscape 667x375', width: 667, height: 375, mobile: true },
+  { name: 'phone landscape 844x390', width: 844, height: 390, mobile: true },
   { name: 'tablet portrait', width: 768, height: 1024, mobile: true },
+  { name: 'tablet landscape', width: 1024, height: 768, mobile: true },
   { name: 'desktop', width: 1366, height: 768, mobile: false }
 ];
 
@@ -197,6 +200,83 @@ async function waitForCondition(cdp, sessionId, expression, message) {
   throw new Error(message);
 }
 
+async function assertMenuLayout(cdp, sessionId, viewportName, stepName) {
+  const layout = await evaluate(cdp, sessionId, `(() => {
+    const overlay = document.querySelector('#menuOverlay');
+    const card = document.querySelector('.menu-card');
+    const activeView = ['#menuHeroView', '#menuActionView', '#menuWorldView']
+      .map(selector => document.querySelector(selector))
+      .find(view => view && !view.hidden);
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const tolerance = 2;
+    const rectOf = element => {
+      const rect = element.getBoundingClientRect();
+      return {
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height
+      };
+    };
+    const cardRect = card ? rectOf(card) : null;
+    const activeButtons = activeView
+      ? [...activeView.querySelectorAll('button')].filter(button => {
+          const style = getComputedStyle(button);
+          const rect = button.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+        })
+      : [];
+    const clippedButtons = activeButtons
+      .map(button => ({ id: button.id || button.textContent.trim(), rect: rectOf(button) }))
+      .filter(({ rect }) => (
+        rect.left < -tolerance ||
+        rect.top < -tolerance ||
+        rect.right > viewportWidth + tolerance ||
+        rect.bottom > viewportHeight + tolerance
+      ));
+    const scrollNeeded = !!card && card.scrollHeight > card.clientHeight + 2;
+    const centered = !!cardRect && (
+      Math.abs((cardRect.left + cardRect.width / 2) - viewportWidth / 2) <= Math.max(28, viewportWidth * 0.08) &&
+      (scrollNeeded || Math.abs((cardRect.top + cardRect.height / 2) - viewportHeight / 2) <= Math.max(28, viewportHeight * 0.08))
+    );
+    return {
+      overlayVisible: !!overlay && !overlay.hidden && getComputedStyle(overlay).display !== 'none',
+      activeViewId: activeView?.id || '',
+      cardRect,
+      cardWithinViewport: !!cardRect &&
+        cardRect.left >= -tolerance &&
+        cardRect.top >= -tolerance &&
+        cardRect.right <= viewportWidth + tolerance &&
+        cardRect.bottom <= viewportHeight + tolerance,
+      clippedButtons,
+      scrollNeeded,
+      centered
+    };
+  })()`);
+  assert(layout.overlayVisible, `${stepName} menu overlay is not visible at ${viewportName}.`);
+  assert(layout.activeViewId, `${stepName} has no active menu view at ${viewportName}.`);
+  assert(layout.cardWithinViewport, `${stepName} menu card is clipped at ${viewportName}: ${JSON.stringify(layout.cardRect)}`);
+  assert(layout.clippedButtons.length === 0, `${stepName} has clipped buttons at ${viewportName}: ${layout.clippedButtons.map(button => button.id).join(', ')}`);
+  assert(layout.centered, `${stepName} menu card is not centered/readable at ${viewportName}: ${JSON.stringify(layout.cardRect)}`);
+}
+
+async function navigateToGame(cdp, sessionId, url, message) {
+  const loaded = cdp.waitFor('Page.loadEventFired', pageMessage => pageMessage.sessionId === sessionId);
+  await cdp.send('Page.navigate', { url }, sessionId);
+  await withTimeout(loaded, message);
+  await new Promise(resolveDelay => setTimeout(resolveDelay, 750));
+}
+
+async function reloadGame(cdp, sessionId, message) {
+  const loaded = cdp.waitFor('Page.loadEventFired', pageMessage => pageMessage.sessionId === sessionId);
+  await cdp.send('Page.reload', {}, sessionId);
+  await withTimeout(loaded, message);
+  await new Promise(resolveDelay => setTimeout(resolveDelay, 750));
+}
+
 function waitForExit(child) {
   if (child.exitCode !== null) return Promise.resolve();
   return new Promise(resolveExit => {
@@ -245,9 +325,7 @@ async function openWorldOneMap(cdp, sessionId) {
 }
 
 async function runWorldMapNavigationSmoke(cdp, sessionId, url) {
-  const loaded = cdp.waitFor('Page.loadEventFired', message => message.sessionId === sessionId);
-  await cdp.send('Page.navigate', { url }, sessionId);
-  await withTimeout(loaded, 'Timed out waiting for map navigation smoke page load.');
+  await navigateToGame(cdp, sessionId, url, 'Timed out waiting for map navigation smoke page load.');
 
   await evaluate(cdp, sessionId, `(() => {
     localStorage.setItem('candy-platformer-selected-hero', 'boy');
@@ -264,10 +342,7 @@ async function runWorldMapNavigationSmoke(cdp, sessionId, url) {
     localStorage.removeItem('candy-platformer-save-v1');
   })()`);
 
-  const reloaded = cdp.waitFor('Page.loadEventFired', message => message.sessionId === sessionId);
-  await cdp.send('Page.reload', {}, sessionId);
-  await withTimeout(reloaded, 'Timed out waiting for seeded map navigation smoke reload.');
-  await new Promise(resolveDelay => setTimeout(resolveDelay, 750));
+  await reloadGame(cdp, sessionId, 'Timed out waiting for seeded map navigation smoke reload.');
 
   await openWorldOneMap(cdp, sessionId);
 
@@ -317,6 +392,147 @@ async function runWorldMapNavigationSmoke(cdp, sessionId, url) {
   );
 }
 
+async function runPersistenceSmoke(cdp, sessionId, url) {
+  const storageBlock = await cdp.send('Page.addScriptToEvaluateOnNewDocument', {
+    source: `
+      Object.defineProperty(window, 'localStorage', {
+        configurable: true,
+        get() { throw new Error('localStorage unavailable for smoke test'); }
+      });
+    `
+  }, sessionId);
+  await navigateToGame(cdp, sessionId, url, 'Timed out waiting for no-localStorage smoke load.');
+  const noStorageBoot = await evaluate(cdp, sessionId, `(() => {
+    const overlay = document.querySelector('#menuOverlay');
+    const heroView = document.querySelector('#menuHeroView');
+    return {
+      menuLoaded: !!overlay && !overlay.hidden,
+      heroSelectVisible: !!heroView && !heroView.hidden,
+      playMode: document.querySelector('.game-wrap')?.classList.contains('play-mode') || false
+    };
+  })()`);
+  assert(noStorageBoot.menuLoaded && noStorageBoot.heroSelectVisible, 'Game did not boot safely when localStorage was unavailable.');
+  assert(!noStorageBoot.playMode, 'Game should not auto-start when localStorage is unavailable.');
+  await cdp.send('Page.removeScriptToEvaluateOnNewDocument', { identifier: storageBlock.identifier }, sessionId);
+
+  await navigateToGame(cdp, sessionId, url, 'Timed out waiting for corrupt-save smoke load.');
+  await evaluate(cdp, sessionId, `(() => {
+    localStorage.clear();
+    localStorage.setItem('candy-platformer-unlocked-level', '999');
+    localStorage.setItem('candy-platformer-selected-hero', 'dragon');
+    localStorage.setItem('candy-platformer-special-progress', '{bad json');
+    localStorage.setItem('candy-platformer-reward-progress', JSON.stringify([true]));
+    localStorage.setItem('candy-platformer-medal-progress', JSON.stringify([{ swift: true }, null, 'bad row']));
+    localStorage.setItem('candy-platformer-options', '{bad json');
+  })()`);
+  await reloadGame(cdp, sessionId, 'Timed out waiting for corrupt-save smoke reload.');
+  const corruptSaveState = await evaluate(cdp, sessionId, `(() => ({
+    menuLoaded: !!document.querySelector('#menuOverlay') && !document.querySelector('#menuOverlay').hidden,
+    selectedHero: document.querySelector('#menuSelectedHeroText')?.textContent || '',
+    girlActive: document.querySelector('#menuGirlButton')?.classList.contains('active') || false,
+    boyActive: document.querySelector('#menuBoyButton')?.classList.contains('active') || false
+  }))()`);
+  assert(corruptSaveState.menuLoaded, 'Game did not boot with corrupt localStorage values.');
+  assert(corruptSaveState.boyActive && !corruptSaveState.girlActive, 'Corrupt hero save should fall back to Boy.');
+
+  await evaluate(cdp, sessionId, `(() => {
+    localStorage.clear();
+    localStorage.setItem('candy-platformer-unlocked-level', '2');
+    localStorage.setItem('candy-platformer-selected-hero', 'girl');
+    localStorage.setItem('candy-platformer-special-progress', JSON.stringify([[true], [true, true, true]]));
+    localStorage.setItem('candy-platformer-reward-progress', JSON.stringify([true]));
+    localStorage.setItem('candy-platformer-medal-progress', JSON.stringify([{ swift: true }, null, { specialist: true }]));
+  })()`);
+  await reloadGame(cdp, sessionId, 'Timed out waiting for partial-save smoke reload.');
+  const partialSaveState = await evaluate(cdp, sessionId, `(() => ({
+    girlActive: document.querySelector('#menuGirlButton')?.classList.contains('active') || false,
+    selectedHeroText: document.querySelector('#menuSelectedHeroText')?.textContent || ''
+  }))()`);
+  assert(partialSaveState.girlActive && partialSaveState.selectedHeroText.includes('Girl'), 'Hero selection did not persist from a partial save.');
+
+  await openWorldOneMap(cdp, sessionId);
+  await holdKey(cdp, sessionId, 'ArrowRight', 40);
+  await new Promise(resolveDelay => setTimeout(resolveDelay, 650));
+  await holdKey(cdp, sessionId, 'ArrowRight', 40);
+  await new Promise(resolveDelay => setTimeout(resolveDelay, 650));
+  await holdKey(cdp, sessionId, 'Enter', 80);
+  await waitForCondition(
+    cdp,
+    sessionId,
+    `(() => document.querySelector('.game-wrap')?.classList.contains('play-mode'))()`,
+    'Partial save did not allow map stage selection after refresh.'
+  );
+  const partialStage = await evaluate(cdp, sessionId, `document.querySelector('#hudLevelName')?.textContent || ''`);
+  assert(partialStage === 'Pretzel Path', `Expected partial old numeric save to load Pretzel Path after refresh, got "${partialStage}".`);
+
+  await reloadGame(cdp, sessionId, 'Timed out waiting for refresh-during-level smoke reload.');
+  const refreshedDuringLevel = await evaluate(cdp, sessionId, `(() => ({
+    menuLoaded: !!document.querySelector('#menuOverlay') && !document.querySelector('#menuOverlay').hidden,
+    heroSelectVisible: !!document.querySelector('#menuHeroView') && !document.querySelector('#menuHeroView').hidden
+  }))()`);
+  assert(refreshedDuringLevel.menuLoaded && refreshedDuringLevel.heroSelectVisible, 'Refresh during level did not return to a safe hero menu.');
+
+  await openWorldOneMap(cdp, sessionId);
+  await reloadGame(cdp, sessionId, 'Timed out waiting for refresh-during-map smoke reload.');
+  const refreshedDuringMap = await evaluate(cdp, sessionId, `(() => ({
+    menuLoaded: !!document.querySelector('#menuOverlay') && !document.querySelector('#menuOverlay').hidden,
+    heroSelectVisible: !!document.querySelector('#menuHeroView') && !document.querySelector('#menuHeroView').hidden
+  }))()`);
+  assert(refreshedDuringMap.menuLoaded && refreshedDuringMap.heroSelectVisible, 'Refresh during map did not return to a safe hero menu.');
+
+  let action = await click(cdp, sessionId, '#menuGirlButton');
+  assert(action.ok, `Could not reopen action menu before reset: ${action.reason || 'unknown'}`);
+  action = await click(cdp, sessionId, '#resetProgressButton');
+  assert(action.ok, `Could not click Reset Progress: ${action.reason || 'unknown'}`);
+  await new Promise(resolveDelay => setTimeout(resolveDelay, 300));
+  const resetState = await evaluate(cdp, sessionId, `(() => ({
+    unlocked: localStorage.getItem('candy-platformer-unlocked-level'),
+    specials: localStorage.getItem('candy-platformer-special-progress'),
+    rewards: localStorage.getItem('candy-platformer-reward-progress'),
+    medals: localStorage.getItem('candy-platformer-medal-progress'),
+    versioned: localStorage.getItem('candy-platformer-save-v1'),
+    hero: localStorage.getItem('candy-platformer-selected-hero'),
+    menuLoaded: !!document.querySelector('#menuOverlay') && !document.querySelector('#menuOverlay').hidden
+  }))()`);
+  assert(resetState.menuLoaded, 'Reset Progress did not return to menu.');
+  assert(resetState.unlocked === null && resetState.specials === null && resetState.rewards === null && resetState.medals === null && resetState.versioned === null, 'Reset Progress did not clear all progress keys.');
+  assert(resetState.hero === 'girl', 'Reset Progress should not clear selected hero preference.');
+
+  for (const branchCase of [
+    { saveLevel: '1', steps: 1, expected: 'Gummy Grove', label: 'Grove' },
+    { saveLevel: '2', steps: 3, expected: 'Jungle Jelly Run', label: 'Jungle' }
+  ]) {
+    await evaluate(cdp, sessionId, `(() => {
+      localStorage.clear();
+      localStorage.setItem('candy-platformer-selected-hero', 'boy');
+      localStorage.setItem('candy-platformer-unlocked-level', ${JSON.stringify(branchCase.saveLevel)});
+      localStorage.setItem('candy-platformer-special-progress', JSON.stringify([
+        [false, false, false],
+        [false, false, false],
+        [false, false, false],
+        [false, false, false],
+        [false, false, false],
+        [false, false, false]
+      ]));
+    })()`);
+    await reloadGame(cdp, sessionId, `Timed out waiting for ${branchCase.label} branch-main refresh smoke reload.`);
+    await openWorldOneMap(cdp, sessionId);
+    for (let step = 0; step < branchCase.steps; step += 1) {
+      await holdKey(cdp, sessionId, 'ArrowRight', 40);
+      await new Promise(resolveDelay => setTimeout(resolveDelay, 650));
+    }
+    await holdKey(cdp, sessionId, 'Enter', 80);
+    await waitForCondition(
+      cdp,
+      sessionId,
+      `(() => document.querySelector('.game-wrap')?.classList.contains('play-mode'))()`,
+      `${branchCase.label} branch-main node did not start gameplay after refresh.`
+    );
+    const stageName = await evaluate(cdp, sessionId, `document.querySelector('#hudLevelName')?.textContent || ''`);
+    assert(stageName === branchCase.expected, `Expected refreshed ${branchCase.label} save to load "${branchCase.expected}", got "${stageName}".`);
+  }
+}
+
 async function run() {
   assert(typeof WebSocket === 'function', 'Node must provide global WebSocket support for this dependency-free smoke test.');
 
@@ -359,6 +575,8 @@ async function run() {
 
     await cdp.send('Runtime.enable', {}, sessionId);
     await cdp.send('Page.enable', {}, sessionId);
+
+    await runPersistenceSmoke(cdp, sessionId, url);
 
     for (const viewport of viewports) {
       await cdp.send('Emulation.setDeviceMetricsOverride', {
@@ -404,6 +622,7 @@ async function run() {
       assert(boot.missing.length === 0, `Missing expected elements at ${viewport.name}: ${boot.missing.join(', ')}`);
       assert(boot.menuLoaded, `Menu overlay did not load at ${viewport.name}.`);
       assert(boot.heroSelectVisible, `Hero select was not visible at ${viewport.name}.`);
+      await assertMenuLayout(cdp, sessionId, viewport.name, 'Hero select');
 
       let action = await click(cdp, sessionId, '#menuBoyButton');
       assert(action.ok, `Could not click Boy hero at ${viewport.name}: ${action.reason || 'unknown'}`);
@@ -416,6 +635,7 @@ async function run() {
         })()`,
         `Action menu did not open at ${viewport.name}.`
       );
+      await assertMenuLayout(cdp, sessionId, viewport.name, 'Action menu');
 
       action = await click(cdp, sessionId, '#mapButton');
       assert(action.ok, `Could not click World Select at ${viewport.name}: ${action.reason || 'unknown'}`);
@@ -429,6 +649,7 @@ async function run() {
         })()`,
         `World Select did not open with a playable World 1 card at ${viewport.name}.`
       );
+      await assertMenuLayout(cdp, sessionId, viewport.name, 'World Select');
 
       action = await click(cdp, sessionId, '#backToActionsButton');
       assert(action.ok, `Could not click World Select back button at ${viewport.name}: ${action.reason || 'unknown'}`);

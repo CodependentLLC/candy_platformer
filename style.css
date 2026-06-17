@@ -505,6 +505,7 @@ button.danger:active { box-shadow: 0 2px 0 #b84c66; }
   justify-content: center;
   padding: 20px;
   overflow-y: auto;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at top left, rgba(255,255,255,.24), transparent 28%),
     linear-gradient(180deg, rgba(15, 27, 30, .12), rgba(15, 27, 30, .52));
@@ -535,7 +536,7 @@ button.danger:active { box-shadow: 0 2px 0 #b84c66; }
 }
 .menu-card {
   width: min(100%, 620px);
-  max-height: calc(100% - 20px);
+  max-height: calc(100dvh - 40px - var(--safe-top) - var(--safe-bottom));
   padding: 28px 24px 24px;
   border-radius: 30px;
   background:
@@ -544,7 +545,8 @@ button.danger:active { box-shadow: 0 2px 0 #b84c66; }
   box-shadow: 0 24px 60px rgba(15, 27, 30, .24);
   text-align: center;
   border: 2px solid rgba(255,255,255,.66);
-  overflow: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .menu-view {
   display: flex;
@@ -1068,13 +1070,10 @@ button.danger:active { box-shadow: 0 2px 0 #b84c66; }
   }
   .menu-card {
     width: 100%;
-    height: min(100%, 100dvh - 12px);
-    max-height: calc(100% - 12px);
+    height: auto;
+    max-height: calc(100dvh - 12px - var(--safe-top) - var(--safe-bottom));
     padding: 16px 14px 14px;
     border-radius: 22px;
-  }
-  .menu-view {
-    justify-content: flex-start;
   }
   .menu-door {
     width: 72px;
@@ -1271,26 +1270,30 @@ button.danger:active { box-shadow: 0 2px 0 #b84c66; }
     display: none;
   }
   .game-wrap.menu-mode .world-card {
-    padding: 16px;
-    border-radius: 18px;
+    padding: 11px 12px 10px;
+    border-radius: 16px;
   }
   .game-wrap.menu-mode .world-card h3 {
-    font-size: 1.15rem;
+    margin-bottom: 4px;
+    font-size: 1rem;
   }
   .game-wrap.menu-mode .world-meta {
-    font-size: .74rem;
+    margin-bottom: 4px;
+    font-size: .68rem;
   }
   .game-wrap.menu-mode .world-copy,
   .game-wrap.menu-mode .world-gate {
-    font-size: .9rem;
-    line-height: 1.34;
+    margin-bottom: 5px;
+    font-size: .78rem;
+    line-height: 1.24;
   }
   .game-wrap.menu-mode .menu-world-view .menu-copy {
     max-width: 28ch;
-    font-size: .9rem;
+    font-size: .82rem;
+    line-height: 1.24;
   }
   .game-wrap.menu-mode .menu-world-view .world-card-list {
-    gap: 12px;
+    gap: 8px;
   }
   .game-wrap.menu-mode .menu-world-view .world-actions {
     margin-top: 4px;

@@ -2275,11 +2275,20 @@
       if (p.kind === 'moving') return assets.rod_pink || assets.wafer_moving || baseImg;
       if (p.kind === 'break') return p.hit ? assets.wafer_broken || assets.icing_block2 || baseImg : assets.lollipop_orange || baseImg;
     }
+    if (theme === 'licorice') {
+      if (p.kind === 'choco') return p.w > 180 ? assets.rod_brown || assets.choco_long || baseImg : assets.choco_double || baseImg;
+      if (p.kind === 'cookie' || p.kind === 'break') {
+        if (p.hit || p.crumbleTimer > 0) return assets.wafer_broken || assets.wafer_block3 || baseImg;
+        return p.w > 150 ? assets.wafer_long || assets.wafer_platform || baseImg : assets.wafer_block2 || assets.wafer_platform || baseImg;
+      }
+      if (p.kind === 'wafer' || p.kind === 'tilt') return assets.wafer_bar || assets.wafer_platform || baseImg;
+      if (p.kind === 'moving') return assets.rod_orange || assets.wafer_moving || baseImg;
+    }
     if (theme === 'falls' || theme === 'mallows') {
       if (p.kind === 'icing' || p.kind === 'slide') return p.w > 170 ? assets.icing_strip || assets.icing_long || baseImg : assets.icing_block2 || baseImg;
       if (p.kind === 'cookie' || p.kind === 'choco') return assets.marshmallow_2 || assets.icing_block || baseImg;
       if (p.kind === 'moving') return assets.icing_strip || assets.wafer_moving || baseImg;
-      if (p.kind === 'break') return p.hit ? assets.cookie_cracked_2 : assets.wafer_broken || baseImg;
+      if (p.kind === 'break') return p.hit ? assets.wafer_broken || assets.icing_block2 || assets.marshmallow_2 || baseImg : assets.wafer_broken || baseImg;
     }
     if (theme === 'woods' || theme === 'jungle') {
       if (p.kind === 'icing' || p.kind === 'cookie') return p.w > 190 ? assets.wafer_long || baseImg : assets.wafer_platform || baseImg;
@@ -2289,7 +2298,7 @@
     }
     if (theme === 'courtyard' || theme === 'keep' || theme === 'sky') {
       if (p.kind === 'icing') return p.w > 180 ? assets.frosting_ground || assets.icing_long || baseImg : assets.cake_disc_1 || assets.icing_block || baseImg;
-      if (p.kind === 'cookie') return p.crumbleTimer > 0 ? baseImg : assets.cake_disc_2 || assets.cookie_block || baseImg;
+      if (p.kind === 'cookie') return p.crumbleTimer > 0 ? assets.gate_broken || assets.cake_disc_3 || assets.wafer_broken || baseImg : assets.cake_disc_2 || assets.cookie_block || baseImg;
       if (p.kind === 'choco') return assets.gate_piece || assets.choco_double || baseImg;
       if (p.kind === 'moving') return assets.gate_piece || assets.wafer_moving || baseImg;
       if (p.kind === 'elevator') return assets.cake_disc_3 || assets.icing_block || baseImg;
@@ -2307,6 +2316,9 @@
     }
     if (theme === 'lollipops') {
       return { glow: 'rgba(255,158,208,0.22)', stroke: 'rgba(255,255,255,0.58)', filter: kind === 'break' ? 'none' : 'saturate(1.12) brightness(1.04)', accent: '#ff74ba' };
+    }
+    if (theme === 'licorice') {
+      return { glow: 'rgba(247,196,113,0.20)', stroke: 'rgba(255,241,199,0.56)', filter: kind === 'break' ? 'none' : 'saturate(1.05) brightness(1.01)', accent: '#f7c471' };
     }
     if (theme === 'falls' || theme === 'mallows') {
       return { glow: 'rgba(137,228,255,0.26)', stroke: 'rgba(238,252,255,0.70)', filter: 'saturate(0.95) brightness(1.12)', accent: '#89e4ff' };
@@ -2355,6 +2367,15 @@
     } else if (theme === 'lollipops') {
       const icon = assets.lollipop_swirl;
       if (icon && p.w >= 84) drawImageCentered(icon, p.x + p.w / 2, drawY + 1, 18);
+    } else if (theme === 'licorice') {
+      ctx.strokeStyle = 'rgba(122,72,46,0.42)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let x = p.x + 14; x < p.x + p.w - 8; x += 22) {
+        ctx.moveTo(x, drawY + 6);
+        ctx.quadraticCurveTo(x + 7, drawY - 2, x + 14, drawY + 6);
+      }
+      ctx.stroke();
     } else if (theme === 'falls' || theme === 'mallows') {
       ctx.fillStyle = 'rgba(255,255,255,0.72)';
       ctx.beginPath();
@@ -2375,6 +2396,7 @@
     if (theme === 'gummy') return { fill: kind === 'float' ? '#8de4ff' : '#ff8fc8', top: '#ffd4ea', stroke: '#c65394' };
     if (theme === 'meadow') return { fill: kind === 'float' ? '#ffc7e3' : '#ffb7d6', top: '#fff4fb', stroke: '#cf73a8' };
     if (theme === 'lollipops') return { fill: '#ff9ed0', top: '#fff1f8', stroke: '#cf5c9d' };
+    if (theme === 'licorice') return { fill: kind === 'choco' ? '#8f5a40' : '#d9a24f', top: '#ffe0a4', stroke: '#7a482e' };
     if (kind === 'cookie' || kind === 'break') return { fill: '#f7c471', top: '#fff0b8', stroke: '#b8753a' };
     if (kind === 'choco') return { fill: '#8f5a40', top: '#d6a36a', stroke: '#5a2e20' };
     if (kind === 'wafer' || kind === 'tilt') return { fill: '#d9a24f', top: '#ffe0a4', stroke: '#916033' };
@@ -2422,6 +2444,8 @@
     const style = platformRenderStyle(platformThemeStyle(theme, p.kind));
     const img = theme === 'gummy'
       ? assets.gumdrop_pink || assets.jelly_pink || assets.marshmallow_1
+      : theme === 'licorice'
+      ? assets.gumdrop_orange || assets.wafer_block2 || assets.marshmallow_1
       : theme === 'woods' || theme === 'jungle'
       ? assets.gumdrop_green || assets.marshmallow_1
       : theme === 'courtyard' || theme === 'keep' || theme === 'sky'
@@ -2437,8 +2461,12 @@
     const style = platformRenderStyle(platformThemeStyle(theme, p.kind));
     const top = theme === 'gummy'
       ? assets.gumdrops_decor || assets.gumdrop_pink || assets.jelly_pink
-      : theme === 'meadow' || theme === 'lollipops'
+      : theme === 'meadow'
+        ? assets.icing_strip || assets.wafer_platform || assets.gumdrop_pink
+      : theme === 'lollipops'
         ? assets.candy_cane_pink || assets.candy_cane_straight || assets.lollipop_swirl
+        : theme === 'licorice'
+          ? assets.wafer_bar || assets.rod_brown || assets.wafer_platform
         : theme === 'falls' || theme === 'mallows'
           ? assets.marshmallow_2 || assets.icing_strip
           : theme === 'woods' || theme === 'jungle'

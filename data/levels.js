@@ -214,7 +214,7 @@
       worldW: 1880,
       start: { x: 70, y: 392 },
       goal: { x: 1740, y: 234 },
-      decor: [D(548, 260, 'lollipop_green', { h: 62, alpha: 0.76 }), D(1048, 214, 'candy_arch', { h: 60, alpha: 0.34 }), D(1600, 180, 'lollipop_pink', { h: 66, alpha: 0.72 })],
+      decor: [D(548, 260, 'gumdrops_decor', { h: 62, alpha: 0.76 }), D(1048, 214, 'candy_arch', { h: 60, alpha: 0.34 }), D(1600, 180, 'jelly_pink', { h: 66, alpha: 0.72 })],
       platforms: [
         P(0, 452, 280, 80, 'icing'), P(320, 416, 160, 22, 'cookie'), V(510, 382, 110, 18, 348, 392, 0.48, 'float'),
         V(660, 334, 116, 18, 302, 344, 0.52, 'float'), P(820, 292, 110, 18, 'icing'), B(962, 392, 82),
@@ -244,7 +244,7 @@
       worldW: 1960,
       start: { x: 70, y: 392 },
       goal: { x: 1822, y: 214 },
-      decor: [D(624, 244, 'lollipop_orange', { h: 62, alpha: 0.72 }), D(1198, 198, 'candy_arch', { h: 58, alpha: 0.34 }), D(1646, 170, 'lollipop_purple', { h: 68, alpha: 0.72 })],
+      decor: [D(624, 244, 'jelly_orange', { h: 62, alpha: 0.72 }), D(1198, 198, 'candy_arch', { h: 58, alpha: 0.34 }), D(1646, 170, 'jelly_green', { h: 68, alpha: 0.72 })],
       platforms: [
         P(0, 452, 290, 80, 'choco'), P(312, 416, 150, 22, 'cookie'), P(522, 378, 132, 20, 'tilt'), P(702, 334, 124, 18, 'wafer'),
         M(852, 318, 126, 22, 852, 1012, 1.15), P(1038, 274, 126, 18, 'tilt'), P(1208, 226, 118, 18, 'wafer'),
